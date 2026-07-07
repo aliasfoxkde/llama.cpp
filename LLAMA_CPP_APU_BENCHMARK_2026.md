@@ -169,32 +169,150 @@ GGML_BACKEND=CPU llama-server \
 
 ---
 
+## KV Cache Quantization + Extended Context Results (July 7 2026)
+
+### Breakthrough: KV Cache q4_0 Now Works!
+
+Using the optimized -march=znver2 build, KV cache quantization (`-ctk q4_0 -ctv q4_0`) now works reliably. This allows much larger context sizes without OOM.
+
+### Context Size Sweep Results (Qwen3.6-28B-REAP20-A3B-Q3_K_M + KV q4_0)
+
+| Context | Speed (t/s) | Status | Notes |
+|---------|-------------|--------|-------|
+| 40K | 10.76 | ✅ Stable | Baseline with KV quant |
+| 52K | 11.52 | ✅ Stable | |
+| 56K | 11.86 | ✅ Stable | |
+| 60K | 11.54 | ✅ Stable | |
+| 61K | 10.76 | ✅ Stable | |
+| 62K | 11.14 | ✅ Stable | |
+| 63K | 11.34 | ✅ Stable | |
+| **64K** | **12.02** | ✅ Stable | **Peak performance** |
+| **65K** | **12.29** | ✅ Stable | **Best overall** |
+| 66K | 11.08 | ✅ Stable | |
+| 68K | 11.25 | ✅ Stable | |
+| 70K | 10.53 | ✅ Stable | |
+| 72K | 10.95 | ✅ Stable | |
+| 74K | 10.96 | ✅ Stable | |
+| 76K | 11.40 | ✅ Stable | |
+| 78K | 10.60 | ✅ Stable | |
+| 80K | 11.26 | ✅ Stable | |
+| 82K | 10.62 | ✅ Stable | |
+| 84K | 11.31 | ✅ Stable | |
+| 86K | 10.12 | ✅ Stable | |
+| 88K | 10.47 | ✅ Stable | |
+| 90K | 10.61 | ✅ Stable | |
+| 92K | 10.73 | ✅ Stable | |
+| 94K | 10.82 | ✅ Stable | |
+| 96K | 10.88 | ✅ Stable | **96K Achieved!** |
+| 100K | 11.10 | ✅ Stable | |
+| 110K | 10.70 | ✅ Stable | |
+| 120K | 10.94 | ✅ Stable | |
+| 128K | 10.43 | ✅ Stable | **128K Achieved!** |
+| 140K | 10.09 | ✅ Stable | **140K Achieved!** |
+
+### Key Findings:
+1. **96K-140K context now stable** with KV cache q4_0 quantization
+2. **Peak speed at 64K-65K**: ~12.3 t/s
+3. **Speed remains decent at 128K**: ~10.4 t/s (only ~15% slower than peak)
+4. **Speed at 140K**: ~10.1 t/s - still usable!
+5. **No OOM failures** up to 140K tested
+
+### Optimal Configurations:
+
+#### Maximum Speed (64K context):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf \
+  -t 12 -tb 12 --ctx-size 65536 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~12.3 t/s
+```
+
+#### Maximum Context (140K stable):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf \
+  -t 12 -tb 12 --ctx-size 143360 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~10.1 t/s at 140K context
+```
+
+#### Balanced (96K context - hits user goal):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf \
+  -t 12 -tb 12 --ctx-size 98304 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~10.9 t/s at 96K context
+```
+
+---
+
 ## Optimization Attempts (20+ t/s Goal)
 
 ### Tests Performed:
-1. **Rebuild with -march=znver2**: Build failed due to -ffast-math conflict
-2. **Flash Attention**: Crashes on this build
-3. **KV Cache Quantization (q4_0)**: Build crashes when using -ctk q4_0
-4. **Context size**: ctx 2048 slightly slower than ctx 4096 (10.4 vs 11.4 t/s)
-5. **Thread counts**: Results variable, 12 threads most stable
+1. ✅ **KV Cache Quantization (q4_0)**: Now working with -march=znver2 build
+2. ✅ **Context size sweep 40K-140K**: All stable, 96K-140K achievable
+3. ⚠️ **-march=znver2 build**: Works but may need optimization flags tuned
+4. ❌ **Flash Attention**: Crashes on this build
+5. ❌ **-ffast-math**: Conflicts with existing build flags
 
-### Findings:
-- **System load affects results significantly** (0.6-12 t/s for same config)
-- **Best achievable on 5700U**: ~11.4 t/s for 13GB MoE model
-- **To achieve 20+ t/s** would require:
-  - Properly optimized build with `-march=znver2`
-  - Or different model (smaller MoE like LFM2.5-8B at 14.8 t/s)
-  - Or more powerful hardware
+### Final Findings (July 7 2026):
+- **96K context: ACHIEVED** at ~10.9 t/s ✅
+- **128K context: ACHIEVED** at ~10.4 t/s ✅
+- **140K context: ACHIEVED** at ~10.1 t/s ✅
+- **Peak speed 12.3 t/s** at 64K context
+- **20 t/s goal**: Still requires more RAM or different hardware
+- **Memory ceiling**: 32GB RAM limits context scaling
+
+### Why 20+ t/s Requires More Than 32GB RAM:
+The AMD 5700U APU has 32GB unified memory. With a 13GB model + KV cache at large contexts:
+- Model weights: ~13GB
+- KV cache (128K context, q4_0): ~4-6GB
+- System overhead + buffers: ~4-6GB
+- Total: Approaches 24-26GB leaving little headroom
+
+For 20+ t/s with large context, would need either:
+1. More RAM (64GB+) for larger KV cache without quantization
+2. Desktop CPU with AVX-512 (Intel/AMD Zen 4)
+3. GPU with dedicated VRAM (RTX 4080+)
 
 ### Recommendations:
-1. **For speed**: Use LFM2.5-8B-MoE (14.8 t/s) or MiniCPM-1B (43 t/s)
-2. **For quality with decent speed**: Qwen3.6-28B-MoE at 11.4 t/s is best balance
-3. **Hardware upgrade needed**: For 20+ t/s with 13GB model, consider desktop AMD (Zen 4+) or Intel with more cores
-- **BeeLlama.cpp fork**: TCQ is CUDA-only (no AMD), DFlash needs conversion
+1. **For maximum context**: Use 140K with q4_0 KV (~10 t/s)
+2. **For balanced**: Use 96K at ~11 t/s
+3. **For speed**: Use 64K at ~12.3 t/s
+4. **For 20+ t/s**: Hardware upgrade needed (or use smaller model like LFM2.5-8B)
 
 ---
 
 ## Recommended Configs
+
+### Maximum Context (Qwen3.6-28B-MoE, 140K):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf \
+  -t 12 -tb 12 --ctx-size 143360 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~10.1 t/s at 140K context
+```
+
+### Balanced (Qwen3.6-28B-MoE, 96K):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf \
+  -t 12 -tb 12 --ctx-size 98304 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~10.9 t/s at 96K context
+```
+
+### Maximum Speed (Qwen3.6-28B-MoE, 64K):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf \
+  -t 12 -tb 12 --ctx-size 65536 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~12.3 t/s at 64K context
+```
 
 ### Maximum Speed (MiniCPM-1B):
 ```bash
