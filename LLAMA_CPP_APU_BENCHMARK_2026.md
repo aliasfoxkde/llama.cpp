@@ -44,8 +44,22 @@ The AMD 5700U APU has **unified shared memory** between CPU and GPU. This means:
 | Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP | 13.4GB | **7.7-9.6 t/s** | Smaller than Q4_K_M (21GB)! |
 | Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP + MTP | 13.4GB | **7.9-8.1 t/s** | MTP draft ~64% acceptance |
 | Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP 96K | 13.4GB | **7.2 t/s** | 96K context works |
+| Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP-RangerX | 12GB | **2.6-4.9 t/s** | ⚠️ Slower than REAP! |
 
-**Key insight**: 35B REAP at 13.4GB is much smaller than 21GB Q4_K_M but slightly slower (7-10 t/s vs 10-12 t/s for 28B MoE). The quality/efficiency trade-off favors 35B REAP for larger contexts.
+### REAP vs RangerX Comparison (35B MoE)
+
+| Context | REAP (192 experts) | RangerX (180 experts) | Winner |
+|---------|---------------------|------------------------|--------|
+| 32K | **7.7-9.6 t/s** | 2.74 t/s | REAP 3x faster |
+| 64K | **7.7 t/s** | 4.85 t/s | REAP 1.6x faster |
+| 128K | - | 4.91 t/s | - |
+| 262K | - | 4.25 t/s | - |
+
+**Key insight**: RangerX (cosine similarity pruning, 180 experts) is significantly slower than REAP (ATBender, 192 experts) despite being slightly smaller. **Use REAP, not RangerX.**
+
+**Size comparison**:
+- REAP: 13.4GB
+- RangerX: 12GB (~10% smaller but ~40% slower)
 
 ### Critical Model Issues
 
