@@ -114,6 +114,45 @@ Run breakdown:
 
 ---
 
+## System-Level Optimizations (July 7 2026)
+
+### Applied Optimizations:
+
+```bash
+# CPU Governor - Set to performance mode
+sudo sh -c 'for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo "performance" > $cpu; done'
+
+# Transparent Huge Pages - Enabled always
+sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/enabled'
+sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/defrag'
+
+# Swappiness - Already optimized at 10
+# NUMA balancing - Already disabled
+```
+
+### Verification:
+```bash
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+# Output: performance
+
+cat /sys/kernel/mm/transparent_hugepage/enabled
+# Output: [always] madvise never
+```
+
+### Impact:
+- CPU Governor: Set from `powersave` to `performance`
+- THP: Enabled for better memory management
+- Combined with -march=znver2 build gives ~10-12 t/s stable
+
+### Other Tunables (Not Applied - Require Root or Reboot):
+- `vm.swappiness` - Already at 10 (low swap usage)
+- `mlock()` / MAP_HUGETLB - Would require rebuild
+- jemalloc - Would require rebuild
+- CPU affinity pinning - Can be done per-run with `taskset`
+- `madvise(MADV_HUGEPAGE)` - Already active with THP
+
+---
+
 ## AMD 5700U Optimization
 
 ### OPTIMAL Parameters (from sweep script analysis):
@@ -257,10 +296,22 @@ GGML_BACKEND=CPU llama-server \
 4. ❌ **Flash Attention**: Crashes on this build
 5. ❌ **-ffast-math**: Conflicts with existing build flags
 
+### Extended Context Results (July 7 2026):
+
+| Context | Speed (t/s) | Status | Notes |
+|---------|-------------|--------|-------|
+| 150K | 8-9.4 | ✅ Stable | Heavy memory pressure |
+| 160K | 3.04 | ✅ Stable | Cache thrashing |
+| 180K | 2.77 | ✅ Stable | Very slow |
+| 200K | 4.01 | ✅ Stable | Slow but works |
+| 224K | 6.96 | ✅ Stable | Better at 224K |
+| **262K** | **8.94** | ✅ Stable | **MAX - Model native ctx!** |
+
 ### Final Findings (July 7 2026):
 - **96K context: ACHIEVED** at ~10.9 t/s ✅
 - **128K context: ACHIEVED** at ~10.4 t/s ✅
 - **140K context: ACHIEVED** at ~10.1 t/s ✅
+- **262K context: ACHIEVED** at ~8.9 t/s ✅ **MODEL MAX CONTEXT!**
 - **Peak speed 12.3 t/s** at 64K context
 - **20 t/s goal**: Still requires more RAM or different hardware
 - **Memory ceiling**: 32GB RAM limits context scaling
@@ -303,6 +354,15 @@ GGML_BACKEND=CPU llama-server \
   -t 12 -tb 12 --ctx-size 98304 \
   -ctk q4_0 -ctv q4_0 --no-warmup
 # ~10.9 t/s at 96K context
+```
+
+### Maximum Context (Qwen3.6-28B-MoE, 262K - Model Max!):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf \
+  -t 12 -tb 12 --ctx-size 262144 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~8.9 t/s at 262K context (MODEL MAX!)
 ```
 
 ### Maximum Speed (Qwen3.6-28B-MoE, 64K):
