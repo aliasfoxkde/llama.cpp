@@ -37,11 +37,21 @@ The AMD 5700U APU has **unified shared memory** between CPU and GPU. This means:
 | Ornith-1.0-9B-heretic-MTP-Q6_K | 7.1GB | **4.7 t/s** | |
 | Ornith-1.0-9B-MTP-Q5_K_M | 6.2GB | **4.7 t/s** | |
 
+### Qwen3.6-35B REAP Models (July 7 2026)
+
+| Model | Size | Speed | Notes |
+|-------|------|-------|-------|
+| Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP | 13.4GB | **7.7-9.6 t/s** | Smaller than Q4_K_M (21GB)! |
+| Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP + MTP | 13.4GB | **7.9-8.1 t/s** | MTP draft ~64% acceptance |
+| Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP 96K | 13.4GB | **7.2 t/s** | 96K context works |
+
+**Key insight**: 35B REAP at 13.4GB is much smaller than 21GB Q4_K_M but slightly slower (7-10 t/s vs 10-12 t/s for 28B MoE). The quality/efficiency trade-off favors 35B REAP for larger contexts.
+
 ### Critical Model Issues
 
 | Model | Issue |
 |-------|-------|
-| Qwen3.6-35B-REAP-RangerX | **GARBLED OUTPUT** - tokenizer/embedding failure |
+| Qwen3.6-35B-A3B-UD-Q4_K_M (21GB) | **GARBLED OUTPUT** - use REAP Q3_K_XL instead |
 | Qwen3.6-27B Dense | ❌ 16GB model too large for 32GB RAM - memory pressure causes 1.6 t/s |
 
 ---
@@ -372,6 +382,25 @@ GGML_BACKEND=CPU llama-server \
   -t 12 -tb 12 --ctx-size 65536 \
   -ctk q4_0 -ctv q4_0 --no-warmup
 # ~12.3 t/s at 64K context
+```
+
+### Maximum Context (Qwen3.6-35B-REAP, 96K):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-35B-REAP-MTP-UD/Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP.gguf \
+  -t 12 -tb 12 --ctx-size 98304 \
+  -ctk q4_0 -ctv q4_0 --no-warmup
+# ~7.2 t/s at 96K context (smaller model: 13.4GB vs 21GB)
+```
+
+### Maximum Context (Qwen3.6-35B-REAP + MTP):
+```bash
+GGML_BACKEND=CPU llama-server \
+  -m /nas/AI/Models/gguf/Qwen3.6-35B-REAP-MTP-UD/Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP.gguf \
+  -t 12 -tb 12 --ctx-size 98304 \
+  -ctk q4_0 -ctv q4_0 --no-warmup \
+  --spec-type draft-mtp --spec-draft-n-max 3
+# ~8.1 t/s at 96K context (MTP draft ~68% acceptance)
 ```
 
 ### Maximum Speed (MiniCPM-1B):
