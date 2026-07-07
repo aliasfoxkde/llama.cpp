@@ -157,6 +157,23 @@ Run breakdown:
 - GPT-OSS-20B is too slow at 1.32 t/s - 20B dense models need GPU or better quantization
 - Embedding models require specialized tools (llama-embedding) - cannot test with llama-server
 
+### Embedding Model Tests (ONNX Runtime vs GGUF)
+
+#### ONNX Embedding Models
+
+| Model | Size | Short Text (~5 tokens) | Long Text (512 tokens) | Embedding Dim |
+|-------|------|------------------------|------------------------|---------------|
+| BGE-small-en-v1.5-ONNX | 127MB | **~20ms** | **~992ms** | 384 |
+
+**Notes:**
+- BGE-small-en-v1.5 ONNX works with ONNX Runtime 1.24.2
+- Nomic-embed-text-v1.5 ONNX (Q4_F16) has compatibility issues with ONNX Runtime
+- Load time: ~0.64s for BGE ONNX
+
+**GGUF Embedding:**
+- llama-embedding binary built successfully at `build/bin/llama-embedding`
+- GGUF embedding models were not downloadable (HuggingFace access issues)
+
 ---
 
 ## System-Level Optimizations (July 7 2026)
