@@ -67,6 +67,8 @@ The AMD 5700U APU has **unified shared memory** between CPU and GPU. This means:
 |-------|-------|
 | Qwen3.6-35B-A3B-UD-Q4_K_M (21GB) | **GARBLED OUTPUT** - use REAP Q3_K_XL instead |
 | Qwen3.6-27B Dense | ❌ 16GB model too large for 32GB RAM - memory pressure causes 1.6 t/s |
+| Ornith-9B models | ⚠️ Not reliably tested due to system load |
+| Qwen3.6-27B-MTP-pi | ❌ Too large for 32GB RAM with KV cache |
 
 ---
 
@@ -75,9 +77,12 @@ The AMD 5700U APU has **unified shared memory** between CPU and GPU. This means:
 ### MiniCPM5-1B-Q4_K_M (657MB)
 **BEST FOR: Maximum speed text generation**
 
+**Note**: Tested with performance CPU mode. With powersave mode, speed is significantly lower.
+
 | Config | Load Time | Wall Time | Gen t/s | Notes |
 |--------|-----------|----------|---------|-------|
-| CPU-12t | ~9s | ~3.4s | **43.2** | ✅ Optimal (5 runs avg) |
+| CPU-12t (performance) | ~9s | ~3.4s | **43.2** | ✅ Optimal (5 runs avg) |
+| CPU-12t (powersave) | ~9s | ~8s | **~4** | ⚠️ Power-saving mode |
 
 Run breakdown:
 - Run 1: 49.3 t/s
