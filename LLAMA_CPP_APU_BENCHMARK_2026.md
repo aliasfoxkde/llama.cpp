@@ -141,6 +141,22 @@ Run breakdown:
 | CPU-8t | ~76s | 5288ms | **14.8** | ✅ Fastest overall |
 | GPU-40l | ~7s | 5338ms | **12.9** | GPU overhead hurts |
 
+### New Models Tested (July 7 2026)
+
+| Model | Size | Speed | Notes |
+|-------|------|-------|-------|
+| LFM2.5-8B-A1B-Q4_K_M | 4.9GB | **2.07 t/s** | ⚠️ Too slow |
+| LFM2.5-8B-A1B-UD-Q4_K_XL | 347MB | **2.58 t/s** | Surprisingly small! |
+| LFM2.5-VL-450M-Q8_0 | 256MB | **8.89 t/s** | Vision model, fast! |
+| GPT-OSS-20B-UD-Q4_K_XL | 12GB | **1.32 t/s** | ❌ Too slow for 20B |
+| nomic-embed-text-v1.5-Q4_K_M | 81MB | N/A | Embedding model (needs llama-embedding) |
+
+**Key Findings**:
+- LFM2.5-8B UD-Q4_K_XL is extremely small (347MB!) yet performs decently
+- LFM2.5-VL-450M is a vision model running at 8.89 t/s - great for multimodal
+- GPT-OSS-20B is too slow at 1.32 t/s - 20B dense models need GPU or better quantization
+- Embedding models require specialized tools (llama-embedding) - cannot test with llama-server
+
 ---
 
 ## System-Level Optimizations (July 7 2026)
