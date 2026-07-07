@@ -61,14 +61,14 @@ The AMD 5700U APU has **unified shared memory** between CPU and GPU. This means:
 - REAP: 13.4GB
 - RangerX: 12GB (~10% smaller but ~40% slower)
 
-### Critical Model Issues
+### Critical Model Issues (Removed)
 
-| Model | Issue |
-|-------|-------|
-| Qwen3.6-35B-A3B-UD-Q4_K_M (21GB) | **GARBLED OUTPUT** - use REAP Q3_K_XL instead |
-| Qwen3.6-27B Dense | ❌ 16GB model too large for 32GB RAM - memory pressure causes 1.6 t/s |
-| Ornith-9B models | ⚠️ Not reliably tested due to system load |
-| Qwen3.6-27B-MTP-pi | ❌ Too large for 32GB RAM with KV cache |
+| Model | Issue | Status |
+|-------|-------|--------|
+| Qwen3.6-35B-A3B-UD-Q4_K_M (21GB) | **GARBLED OUTPUT** | ✅ Removed |
+| Qwen3.6-27B Dense | ❌ Too large for 32GB RAM | ✅ Removed |
+| Ornith-9B models | ❌ MTP incompatibility (~0.5 t/s) | ✅ Removed |
+| Qwen3.6-27B-MTP-pi | ❌ Too large with KV cache | ✅ Removed |
 
 ---
 
@@ -225,15 +225,13 @@ GGML_BACKEND=CPU llama-server \
 
 ---
 
-## Missing / Needed
+## Current Models (July 7 2026)
 
-### Models (Current - July 7 2026):
+### On System (~55GB total):
 - ✅ **Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP**: `/nas/AI/Models/gguf/Qwen3.6-35B-REAP-MTP-UD/Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP.gguf` (13.4GB)
 - ✅ **Qwen3.6-28B-REAP20-A3B-Q3_K_M**: `/nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf` (13GB)
 - ✅ **Qwen3.6-28B-REAP.i1-Q3_K_M**: `/nas/AI/Models/gguf/Qwen3.6-28B-REAP-i1/Qwen3.6-28B-REAP.i1-Q3_K_M.gguf` (13GB)
-- ✅ **Qwen3.6-27B-MTP-pi-reasoning**: `/nas/AI/Models/gguf/Qwen3.6-27B-MTP-pi-reasoning/` (13GB)
-- ✅ **Ornith-1.0-9B-heretic-MTP-Q6_K**: `/nas/AI/Models/gguf/Ornith-1.0-9B-heretic-MTP/Ornith-1.0-9B-heretic-MTP-Q6_K.gguf` (7.1GB)
-- ✅ **Ornith-1.0-9B-MTP-Q5_K_M**: `/nas/AI/Models/gguf/Ornith-1.0-9B-MTP/Ornith-1.0-9B-MTP-Q5_K_M.gguf` (6.2GB)
+- ✅ **MiniCPM-1B-Q4_K_M**: `/nas/AI/Models/benchmarks/minicpm5/minicpm5-1b-Q4_K_M.gguf` (657MB)
 
 ### Removed (July 7 2026):
 - ❌ **Qwen3.6-35B-A3B-MoE Q4_K_M (21GB)**: Garbled output - use REAP instead
