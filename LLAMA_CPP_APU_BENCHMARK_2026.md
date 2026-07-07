@@ -222,13 +222,18 @@ GGML_BACKEND=CPU llama-server \
 
 ## Missing / Needed
 
-### Models (DOWNLOADED July 6 2026):
-- ✅ **Qwen3.6-35B-A3B MoE**: `/nas/AI/Models/gguf/Qwen3.6-35B-A3B-MoE/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` (21GB)
-- ✅ **Qwen3.6-27B Dense**: `/nas/AI/Models/gguf/Qwen3.6-27B-Dense/Qwen3.6-27B-Q4_K_M.gguf` (16GB)
+### Models (Current - July 7 2026):
+- ✅ **Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP**: `/nas/AI/Models/gguf/Qwen3.6-35B-REAP-MTP-UD/Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP.gguf` (13.4GB)
 - ✅ **Qwen3.6-28B-REAP20-A3B-Q3_K_M**: `/nas/AI/Models/gguf/Qwen3.6-28B-REAP20-A3B/Qwen3.6-28B-REAP20-A3B-Q3_K_M.gguf` (13GB)
 - ✅ **Qwen3.6-28B-REAP.i1-Q3_K_M**: `/nas/AI/Models/gguf/Qwen3.6-28B-REAP-i1/Qwen3.6-28B-REAP.i1-Q3_K_M.gguf` (13GB)
+- ✅ **Qwen3.6-27B-MTP-pi-reasoning**: `/nas/AI/Models/gguf/Qwen3.6-27B-MTP-pi-reasoning/` (13GB)
 - ✅ **Ornith-1.0-9B-heretic-MTP-Q6_K**: `/nas/AI/Models/gguf/Ornith-1.0-9B-heretic-MTP/Ornith-1.0-9B-heretic-MTP-Q6_K.gguf` (7.1GB)
 - ✅ **Ornith-1.0-9B-MTP-Q5_K_M**: `/nas/AI/Models/gguf/Ornith-1.0-9B-MTP/Ornith-1.0-9B-MTP-Q5_K_M.gguf` (6.2GB)
+
+### Removed (July 7 2026):
+- ❌ **Qwen3.6-35B-A3B-MoE Q4_K_M (21GB)**: Garbled output - use REAP instead
+- ❌ **Qwen3.6-27B Dense (16GB)**: Too large for 32GB RAM
+- ❌ **Qwen3.6-35B-A3B-UD-Q3_K_XL-REAP-RangerX (12GB)**: Slower than REAP
 
 ---
 
