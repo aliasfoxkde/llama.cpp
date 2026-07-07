@@ -129,33 +129,33 @@ Run breakdown:
 ### Applied Optimizations:
 
 ```bash
-# CPU Governor - Set to performance mode
-sudo sh -c 'for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo "performance" > $cpu; done'
+# CPU Governor - Keep on powersave for idle efficiency (~6W idle)
+# System peaks at ~30W for heavy usage, power-efficient design
 
 # Transparent Huge Pages - Enabled always
 sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/enabled'
 sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/defrag'
 
-# Swappiness - Already optimized at 10
+# Swappiness - Already at 10
 # NUMA balancing - Already disabled
 ```
 
-### Verification:
+### Power Profile:
+- **Idle**: ~6W system power consumption
+- **Heavy usage**: ~30W peak
+- **JBOD/NAS**: ~4.1W (includes ~1-2W waste from low-quality fan)
+- **Philosophy**: Power efficiency over raw performance for sustained workloads
+
+### Verified Settings:
 ```bash
 cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-# Output: performance
+# Output: powersave
 
 cat /sys/kernel/mm/transparent_hugepage/enabled
 # Output: [always] madvise never
 ```
 
-### Impact:
-- CPU Governor: Set from `powersave` to `performance`
-- THP: Enabled for better memory management
-- Combined with -march=znver2 build gives ~10-12 t/s stable
-
 ### Other Tunables (Not Applied - Require Root or Reboot):
-- `vm.swappiness` - Already at 10 (low swap usage)
 - `mlock()` / MAP_HUGETLB - Would require rebuild
 - jemalloc - Would require rebuild
 - CPU affinity pinning - Can be done per-run with `taskset`
@@ -343,6 +343,13 @@ For 20+ t/s with large context, would need either:
 2. **For balanced**: Use 96K at ~11 t/s
 3. **For speed**: Use 64K at ~12.3 t/s
 4. **For 20+ t/s**: Hardware upgrade needed (or use smaller model like LFM2.5-8B)
+
+### Smart Context Strategy:
+Since 8.9 t/s at 262K and ~10-11 t/s at 96-140K are acceptable for most tasks:
+- Use **128K** as the "sweet spot" for most tasks (auto-adjust based on workload)
+- Use **64K or smaller** for quick, simple tasks
+- Use **140K-262K** only when truly needed (large codebases, long documents)
+- A smart wrapper could monitor prompt length and dynamically adjust ctx-size
 
 ---
 
