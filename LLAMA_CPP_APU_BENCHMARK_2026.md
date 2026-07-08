@@ -159,20 +159,21 @@ Run breakdown:
 
 ### Embedding Model Tests (ONNX Runtime vs GGUF)
 
-#### ONNX Embedding Models
+#### Embedding Model Comparison
 
-| Model | Size | Short Text (~5 tokens) | Long Text (512 tokens) | Embedding Dim |
+| Model | Size | Short Text (~5 tokens) | Long Text (~512 tokens) | Embedding Dim |
 |-------|------|------------------------|------------------------|---------------|
-| BGE-small-en-v1.5-ONNX | 127MB | **~20ms** | **~992ms** | 384 |
+| BGE-small-en-v1.5-ONNX | 127MB | **~20ms** | **~1677ms** | 384 |
+| BGE-small-en-v1.5-Q4_K_M (GGUF) | 29MB | ~415ms | ~550ms* | 384 |
+
+*GGUF measurement includes model loading overhead per call
 
 **Notes:**
-- BGE-small-en-v1.5 ONNX works with ONNX Runtime 1.24.2
-- Nomic-embed-text-v1.5 ONNX (Q4_F16) has compatibility issues with ONNX Runtime
-- Load time: ~0.64s for BGE ONNX
-
-**GGUF Embedding:**
-- llama-embedding binary built successfully at `build/bin/llama-embedding`
-- GGUF embedding models were not downloadable (HuggingFace access issues)
+- ONNX Runtime 1.24.2 works well with BGE ONNX models
+- GGUF embeddings are quantized (Q4_K_M) and smaller (29MB vs 127MB)
+- ONNX is faster per inference, but GGUF is much smaller
+- llama-embedding binary: `build/bin/llama-embedding`
+- Both models produce valid embedding vectors
 
 ---
 
