@@ -91,12 +91,34 @@ Agent 2:
 
 The gfx90c (Renoir) architecture likely needs a newer ROCm version than 6.1.2, or the HIP runtime is misconfigured on Debian Trixie. Vulkan works out-of-the-box via the open-source RADV driver that is already loaded as the kernel module.
 
+## Vision (Multimodal)
+
+Model: Ternary-Bonsai-27B-mmproj-Q8_0 (601 MB)
+Path: `/home/mkinney/models/ternary-gguf/27B/Ternary-Bonsai-27B-mmproj-Q8_0.gguf`
+
+Vision inference requires both the main model AND the mmproj projector:
+
+```bash
+llama-server -m Ternary-Bonsai-27B-Q2_0.gguf --mmproj Ternary-Bonsai-27B-mmproj-Q8_0.gguf -ngl 99
+```
+
+Test: 1×1 PNG with 256×256 grayscale texture, `Describe this image in one sentence.`
+
+| Metric | Value |
+|--------|-------|
+| t/s | 1.05 |
+| Image processed | Yes — correct description |
+| VRAM used | ~7.8 GB (model 7.17 GB + mmproj 0.6 GB) |
+
+The mmproj-Q8_0 is **not standalone** — it requires `--mmproj` flag pointing to the projector file, and must be used alongside the base model.
+
 ## Key findings
 
 1. **Vulkan is the best backend** for this APU — works out of the box with RADV
 2. **Integrated GPU is bandwidth-limited** — shared DDR4 memory means throughput is modest (~1 t/s)
 3. **NVME storage matters for iteration speed** — 25s cold load vs 70-90s on NAS
 4. **ROCm is broken** on this APU with current stack
+5. **Vision works** with Q2_0 + mmproj-Q8_0 on Vulkan at 1.05 t/s
 
 ## See also
 
