@@ -401,6 +401,8 @@ On Linux it is possible to use unified memory architecture (UMA) to share main m
 
 ## Vulkan
 
+> **Note on AMD APUs:** Vulkan is supported on most AMD GPUs, but performance varies significantly. Older integrated GPUs (e.g. 5700U / GCN 5 / Vega) have limited Vulkan compute capability and may perform better on CPU. Discrete RDNA2+ GPUs (e.g. RX 6700 XT, 7900 XTX) and RDNA 3.5 (Strix Halo) work well. See the [AMD APU Performance Guide](AMD-APU-PERFORMANCE.md) for details.
+
 ### For Windows Users:
 **w64devkit**
 
@@ -528,6 +530,52 @@ Finally, after finishing your build, you should be able to do something like thi
 Generally, follow LunarG's [Getting Started with the MacOS Vulkan SDK](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html) guide for installation and setup of the Vulkan SDK. There are two options of Vulkan drivers on macOS, both of which implement translation layers to map Vulkan to Metal. They can be hot-swapped by setting the `VK_ICD_FILENAMES` environment variable to point to the respective ICD JSON file.
 
 Check the box for "KosmicKrisp" during the LunarG Vulkan SDK installation.
+
+### Troubleshooting
+
+#### "No Vulkan devices found" or GPU not enumerated
+
+If `vulkaninfo` runs but llama.cpp reports no GPU:
+
+1. **Verify GPU is detected by Vulkan:**
+   ```bash
+   vulkaninfo --json | python3 -c "import sys,json; [print(d['deviceName'], d['deviceType']) for d in json.load(sys.stdin).get('devices',[])]"
+   ```
+
+2. **Check ICD loader configuration:**
+   ```bash
+   cat /usr/share/vulkan/icd.d/radeon_icd.json   # AMD RADV
+   cat /usr/share/vulkan/icd.d/intel_icd.json    # Intel ANV
+   ```
+
+3. **AMD APU (e.g. 5700U) — known limitations:**
+   - The GPU is detected but compute shader support may be limited.
+   - Older GCN architectures (gfx900 / Vega, like 5700U) have poor Vulkan compute performance.
+   - ROCmFPX does **not** support GCN — it requires RDNA2 or newer.
+   - Try with CPU fallback: `cmake -B build -DGGML_VULKAN=OFF`
+   - For APU performance details, see [AMD APU Performance Guide](AMD-APU-PERFORMANCE.md).
+
+4. **Force a specific Vulkan device:**
+   ```bash
+   VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json ./llama-cli -m model.gguf -ngl 99
+   # or try the llvmpipe software renderer:
+   VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json ./llama-cli -m model.gguf
+   ```
+
+5. **Verify Vulkan compute works:**
+   ```bash
+   vulkaninfo --summary | grep -A5 "GPU"
+   # Look for "GPU id = 0" entries with deviceType PHYSICAL_DEVICE_TYPE_*
+   ```
+
+#### Low throughput on AMD iGPU/APU
+
+For integrated GPUs (AMD Renoir, Lucienne, etc.):
+
+- The GPU may be recognized but compute matmul kernels fall back to CPU.
+- Performance is typically **better on CPU backend** for compute-heavy models.
+- See [AMD APU Performance Guide](AMD-APU-PERFORMANCE.md#optimization-path-for-5700u) for tuned settings.
+- Consider [ROCmFPX](https://github.com/ciru-ai/ROCmFPX) for **RDNA2+ AMD dGPUs** only.
 
 Set environment variable for the LunarG Vulkan SDK after installation (and optionally add to your shell profile for persistence):
 ```bash
