@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
 llama-proxy: Reverse proxy for llama-server with model switching support.
-Adds:
-- /model endpoint to get current model
-- /model/switch endpoint to switch models (restarts backend)
+- Serves static docs at /
+- Model endpoints: /models, /model
+- Proxies all other requests to llama-server on 8080
 """
 
 import subprocess
 import json
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
 import threading
 import time
 import os
@@ -18,6 +17,7 @@ import os
 LLAMA_HOST = "localhost"
 LLAMA_PORT = 8080
 PROXY_PORT = 8082
+DOCS_PATH = "/home/mkinney/.llama-server/docs"
 
 MODEL_ALIASES = {
     "Qwen3.8-27B": "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf",
@@ -33,7 +33,6 @@ def start_llama_server(model_path):
     """Start or restart llama-server with the given model."""
     global server_process
 
-    # Kill existing server
     subprocess.run(["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL)
     time.sleep(2)
 
@@ -51,12 +50,10 @@ def start_llama_server(model_path):
         "--sleep-idle-seconds", "300",
         "--host", "0.0.0.0",
         "--port", str(LLAMA_PORT),
-        "--path", "/home/mkinney/.llama-server/docs"
     ]
 
     server_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Wait for server to be ready
     import urllib.request
     for _ in range(60):
         try:
@@ -85,49 +82,97 @@ def switch_model(alias):
     return False, "Failed to start server"
 
 
+def send_file(path):
+    """Read and return file contents."""
+    with open(path, 'rb') as f:
+        return f.read()
+
+
 class ProxyHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        pass  # Silence logging
+        pass
 
     def do_GET(self):
-        if self.path == "/model" or self.path == "/model/":
+        path = self.path.split('?')[0]
+
+        if path == "/" or path == "/index.html":
+            # Serve docs
+            try:
+                content = send_file(os.path.join(DOCS_PATH, "index.html"))
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Length", len(content))
+                self.end_headers()
+                self.wfile.write(content)
+            except FileNotFoundError:
+                self.send_error(404)
+            return
+
+        if path == "/models":
+            models = [{"id": alias, "object": "model", "owned_by": "local", "permission": []} for alias in MODEL_ALIASES]
+            response = json.dumps({"object": "list", "data": models}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", len(response))
             self.end_headers()
+            self.wfile.write(response)
+            return
+
+        if path.rstrip("/") == "/model":
             response = {
-                "model": MODEL_ALIASES.get(current_model, ""),
-                "alias": current_model,
+                "id": current_model,
+                "object": "model",
+                "owned_by": "local",
+                "permission": [],
+                "path": MODEL_ALIASES.get(current_model, ""),
                 "available": list(MODEL_ALIASES.keys())
             }
-            self.wfile.write(json.dumps(response).encode())
-        else:
-            # Forward everything else to llama-server
-            self.proxy_request("GET")
+            content = json.dumps(response).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", len(content))
+            self.end_headers()
+            self.wfile.write(content)
+            return
+
+        # Proxy to llama-server
+        self.proxy_request("GET")
 
     def do_POST(self):
-        if self.path == "/model/switch" or self.path == "/model/switch/":
+        path = self.path.split('?')[0]
+
+        if path == "/model" or path.rstrip("/") == "/model":
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length).decode()
             try:
                 data = json.loads(body)
-                alias = data.get("model") or data.get("alias")
+                alias = data.get("model") or data.get("id") or data.get("alias")
                 if not alias:
-                    self.send_error(400, "model or alias required")
+                    self.send_error(400, "model, id, or alias required")
                     return
 
                 with model_lock:
                     success, msg = switch_model(alias)
                     if success:
+                        response = json.dumps({
+                            "id": alias,
+                            "object": "model",
+                            "owned_by": "local",
+                            "path": MODEL_ALIASES.get(alias, ""),
+                        }).encode()
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", len(response))
                         self.end_headers()
-                        self.wfile.write(json.dumps({"status": "ok", "message": msg}).encode())
+                        self.wfile.write(response)
                     else:
                         self.send_error(400, msg)
             except Exception as e:
                 self.send_error(400, str(e))
-        else:
-            self.proxy_request("POST")
+            return
+
+        # Proxy to llama-server
+        self.proxy_request("POST")
 
     def proxy_request(self, method):
         """Forward request to llama-server."""
@@ -138,7 +183,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         headers = {}
         for k, v in self.headers.items():
-            if k.lower() not in ("host", "connection"):
+            if k.lower() not in ("host", "connection", "content-length"):
                 headers[k] = v
 
         content_length = int(self.headers.get("Content-Length", 0))
@@ -159,14 +204,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    # Start with default model
     start_llama_server(MODEL_ALIASES[current_model])
 
     server = HTTPServer(("0.0.0.0", PROXY_PORT), ProxyHandler)
     print(f"Proxy running on port {PROXY_PORT}")
-    print(f"API: http://localhost:{PROXY_PORT}/completion")
-    print(f"Model info: GET http://localhost:{PROXY_PORT}/model")
-    print(f"Switch model: POST http://localhost:{PROXY_PORT}/model/switch {{\"alias\": \"qwen3.6-reap\"}}")
+    print(f"  /           - API docs")
+    print(f"  /models     - List models")
+    print(f"  /model      - Get current model")
+    print(f"  /completion - Inference API")
     sys.stdout.flush()
     server.serve_forever()
 
