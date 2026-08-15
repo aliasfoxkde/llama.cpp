@@ -773,15 +773,16 @@ async function checkHealth() {
       document.getElementById('healthStatus').textContent = 'Server ready';
       document.getElementById('healthStatus').style.color = 'var(--green)';
 
-      // Get model info
-      const r = await fetch(`${API}/completion`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: 'x', n_predict: 1 })
-      });
-      const d = await r.json();
-      const model = d.model || '';
-      document.getElementById('currentModel').textContent = model.includes('Qwen3.6') ? 'Qwen3.6 REAP' : 'Qwen3.8 IQ3';
+      // Get model info from /model endpoint
+      try {
+        const r = await fetch(`${API}/model`);
+        if (r.ok) {
+          const d = await r.json();
+          document.getElementById('currentModel').textContent = d.id || 'unknown';
+        }
+      } catch {
+        document.getElementById('currentModel').textContent = 'unknown';
+      }
     } else {
       throw new Error('not ok');
     }
