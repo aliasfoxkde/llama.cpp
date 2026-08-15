@@ -1,0 +1,16 @@
+[Unit]
+Description=llama.cpp server (API only)
+After=network.target
+
+[Service]
+Type=simple
+Environment="CUDA_VISIBLE_DEVICES=0"
+WorkingDirectory=/home/mkinney
+ExecStart=/home/mkinney/Repos/llama.cpp/build-cuda-new/bin/llama-server -m /home/mkinney/.llama-server/model.gguf -c 131072 -tb 256 -ctk q4_0 -ctv q4_0 -ngl 99 -t 16 -np 4 -fa on --sleep-idle-seconds 300 --host 0.0.0.0 --port 8080 --api-prefix /v1
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

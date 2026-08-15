@@ -1,0 +1,13 @@
+[Unit]
+Description=llama-server API documentation
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mkinney/.llama-server/docs
+ExecStart=/usr/bin/python3 -m http.server 8081
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

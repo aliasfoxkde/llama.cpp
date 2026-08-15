@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Llama Server API — Interactive Docs</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-secondary: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    header .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .status-bar {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+    }
+
+    .status-dot.green { background: var(--green); }
+    .status-dot.red { background: var(--red); }
+    .status-dot.yellow { background: var(--yellow); }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    section {
+      margin-bottom: 3rem;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.75rem;
+      color: var(--accent);
+    }
+
+    .endpoint {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .endpoint-header:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .method {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .method.get { background: var(--green); color: #000; }
+    .method.post { background: var(--accent); color: #000; }
+
+    .endpoint-path {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    .endpoint-desc {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-left: auto;
+    }
+
+    .endpoint-body {
+      display: none;
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .endpoint-body.open { display: block; }
+
+    .arrow {
+      color: var(--text-secondary);
+      transition: transform 0.2s;
+    }
+
+    .endpoint-header.open .arrow {
+      transform: rotate(90deg);
+    }
+
+    pre {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.85rem;
+      margin: 0.75rem 0;
+    }
+
+    code {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      background: var(--bg-tertiary);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+
+    .interactive {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .interactive h4 {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .row > * { flex: 1; }
+
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 0.6rem 1.25rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: none;
+    }
+
+    .response.show { display: block; }
+
+    .response-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .response-time {
+      color: var(--text-secondary);
+    }
+
+    .response-body {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+      background: var(--bg-secondary);
+      padding: 0.75rem;
+      border-radius: 4px;
+    }
+
+    .models-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .models-table th, .models-table td {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .models-table th {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .kv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 0.5rem 0;
+    }
+
+    .kv-table th, .kv-table td {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--border);
+    }
+
+    .kv-table th { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+    .note {
+      background: rgba(88, 166, 255, 0.1);
+      border-left: 3px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .timing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .timing-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    .timing-card .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .timing-card .label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🐐 Llama Server API</h1>
+  <div class="subtitle">llama.cpp server on RTX 5060 Ti 16GB — Interactive Documentation</div>
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="status-dot" id="healthDot"></div>
+      <span id="healthStatus">Checking...</span>
+    </div>
+    <div class="status-item">
+      <span>Model: <strong id="currentModel">—</strong></span>
+    </div>
+    <div class="status-item">
+      <span>Context: <strong>128K</strong></span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section>
+  <h2>Quick Reference</h2>
+
+  <div class="timing-grid">
+    <div class="timing-card">
+      <div class="value">~2.3s</div>
+      <div class="label">IQ3_XXS Load Time</div>
+    </div>
+    <div class="timing-card">
+      <div class="value">~9.6s</div>
+      <div class="label">REAP-MTP Load Time</div>
+    </div>
+    <div class="timing-card">
+      <div class="value">~30 t/s</div>
+      <div class="label">Concurrent Throughput</div>
+    </div>
+    <div class="timing-card">
+      <div class="value">128K</div>
+      <div class="label">Max Context</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Orchestration Tip:</strong> Poll <code>GET /health</code> until 200 OK, then wait an additional 500ms for model initialization.
+  </div>
+</section>
+
+<section>
+  <h2>Available Models</h2>
+
+  <table class="models-table">
+    <thead>
+      <tr>
+        <th>Alias</th>
+        <th>Model</th>
+        <th>Size</th>
+        <th>Load Time</th>
+        <th>Best For</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>qwen3.8-27b-iq3</code></td>
+        <td>Qwen3.8-27B UD-IQ3_XXS</td>
+        <td>12GB</td>
+        <td>~2.3s</td>
+        <td>Code/agent tasks, large context</td>
+      </tr>
+      <tr>
+        <td><code>qwen3.6-reap</code></td>
+        <td>Qwen3.6-35B REAP-MTP</td>
+        <td>13GB</td>
+        <td>~9.6s</td>
+        <td>Fast small tasks, MTP speculative decoding</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Switching Models</h3>
+  <pre>llama-server switch qwen3.6-reap  # Switch to REAP
+llama-server switch qwen3.8-27b-iq3  # Switch back</pre>
+</section>
+
+<section>
+  <h2>API Endpoints</h2>
+
+  <div class="endpoint" id="healthEndpoint">
+    <div class="endpoint-header" onclick="toggleEndpoint('healthEndpoint')">
+      <span class="method get">GET</span>
+      <span class="endpoint-path">/health</span>
+      <span class="endpoint-desc">Health check</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="color: var(--text-secondary); margin-bottom: 1rem;">Returns <code>{"status":"ok"}</code> if server is ready.</p>
+
+      <div class="interactive">
+        <h4>Try It</h4>
+        <button onclick="testHealth()">Send Request</button>
+        <div class="response" id="healthResponse">
+          <div class="response-header">
+            <span id="healthStatus2">—</span>
+            <span class="response-time" id="healthTime"></span>
+          </div>
+          <div class="response-body" id="healthBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="completionEndpoint">
+    <div class="endpoint-header" onclick="toggleEndpoint('completionEndpoint')">
+      <span class="method post">POST</span>
+      <span class="endpoint-path">/completion</span>
+      <span class="endpoint-desc">Generate text completion</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="endpoint-body">
+      <h3>Request Body</h3>
+      <table class="kv-table">
+        <tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>prompt</code></td><td>string</td><td>—</td><td>Input text (required)</td></tr>
+        <tr><td><code>n_predict</code></td><td>int</td><td>128</td><td>Max tokens to generate</td></tr>
+        <tr><td><code>temperature</code></td><td>float</td><td>1.0</td><td>Sampling temperature (0.0–2.0)</td></tr>
+        <tr><td><code>top_p</code></td><td>float</td><td>0.95</td><td>Nucleus sampling threshold</td></tr>
+        <tr><td><code>top_k</code></td><td>int</td><td>20</td><td>Top-k sampling</td></tr>
+        <tr><td><code>stop</code></td><td>array</td><td>[]</td><td>Stop sequences, e.g. <code>["&lt;/s&gt;"]</code></td></tr>
+        <tr><td><code>cache_type_k</code></td><td>string</td><td>q4_0</td><td>KV cache K type (per-request override)</td></tr>
+        <tr><td><code>cache_type_v</code></td><td>string</td><td>q4_0</td><td>KV cache V type (per-request override)</td></tr>
+        <tr><td><code>seed</code></td><td>int</td><td>random</td><td>Random seed for reproducibility</td></tr>
+      </table>
+
+      <h3>Supported KV Cache Types</h3>
+      <pre>f16, q4_0, q4_1, q5_0, q5_1, q8_0, iq4_nl, f32, bf16</pre>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+        Note: K != V makes zero measurable difference. Use symmetric q4_0/q4_0.
+      </p>
+
+      <div class="interactive">
+        <h4>Try It</h4>
+        <label>Prompt</label>
+        <textarea id="compPrompt" rows="2" placeholder="Enter your prompt...">Write a function that calculates fibonacci numbers in Python</textarea>
+
+        <label>Max Tokens</label>
+        <input type="number" id="compTokens" value="128" min="1" max="4096">
+
+        <label>Temperature</label>
+        <input type="number" id="compTemp" value="0.7" min="0" max="2" step="0.1">
+
+        <div class="row">
+          <div>
+            <label>KV Cache K</label>
+            <select id="compKVK">
+              <option value="q4_0" selected>q4_0</option>
+              <option value="f16">f16</option>
+              <option value="q8_0">q8_0</option>
+              <option value="q4_1">q4_1</option>
+            </select>
+          </div>
+          <div>
+            <label>KV Cache V</label>
+            <select id="compKVV">
+              <option value="q4_0" selected>q4_0</option>
+              <option value="f16">f16</option>
+              <option value="q8_0">q8_0</option>
+              <option value="q4_1">q4_1</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="testCompletion()">Send Request</button>
+        <div class="response" id="compResponse">
+          <div class="response-header">
+            <span id="compStatus">—</span>
+            <span class="response-time" id="compTime"></span>
+          </div>
+          <div class="response-body" id="compBody"></div>
+        </div>
+      </div>
+
+      <h3>Response Fields</h3>
+      <pre>{
+  "content": "...",           // Generated text
+  "tokens_predicted": 128,    // Tokens generated
+  "tokens_evaluated": 12,     // Prompt tokens processed
+  "tokens_cached": 0,        // Cache hits
+  "stop": true,              // Stopped due to stop token?
+  "model": "/path/to/model"  // Model file
+}</pre>
+    </div>
+  </div>
+
+  <div class="endpoint" id="infillEndpoint">
+    <div class="endpoint-header" onclick="toggleEndpoint('infillEndpoint')">
+      <span class="method post">POST</span>
+      <span class="endpoint-path">/infill</span>
+      <span class="endpoint-desc">Code infill (middle of code)</span>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="color: var(--text-secondary); margin-bottom: 1rem;">Generate code to fill the gap between prefix and suffix.</p>
+
+      <div class="interactive">
+        <h4>Try It</h4>
+        <label>Prefix</label>
+        <textarea id="infillPrefix" rows="3" placeholder="Code before...">function calculateFibonacci(n) {
+  if (n &lt;= 1) return n;</textarea>
+
+        <label>Suffix</label>
+        <textarea id="infillSuffix" rows="2" placeholder="Code after...">  }
+  return fib(n - 1) + fib(n - 2);
+}</textarea>
+
+        <label>Max Tokens</label>
+        <input type="number" id="infillTokens" value="64" min="1" max="1024">
+
+        <button onclick="testInfill()">Send Request</button>
+        <div class="response" id="infillResponse">
+          <div class="response-header">
+            <span id="infillStatus">—</span>
+            <span class="response-time" id="infillTime"></span>
+          </div>
+          <div class="response-body" id="infillBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Agent/Orchestration Examples</h2>
+
+  <h3>Python</h3>
+  <pre>import requests, time
+
+API = "http://localhost:8080"
+
+def wait_ready(timeout=30):
+    """Poll health until ready."""
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            if requests.get(f"{API}/health").status_code == 200:
+                return True
+        except: pass
+        time.sleep(0.5)
+    return False
+
+def complete(prompt, n_predict=128, **kwargs):
+    """Send completion request."""
+    payload = {"prompt": prompt, "n_predict": n_predict, **kwargs}
+    resp = requests.post(f"{API}/completion", json=payload)
+    resp.raise_for_status()
+    return resp.json()
+
+# Usage
+if wait_ready():
+    result = complete("Explain recursion", temperature=0.7)
+    print(result["content"])</pre>
+
+  <h3>curl</h3>
+  <pre># Health check
+curl http://localhost:8080/health
+
+# Completion
+curl -X POST http://localhost:8080/completion \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Hello world","n_predict":32}'
+
+# With options
+curl -X POST http://localhost:8080/completion \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Write a short story",
+    "n_predict": 256,
+    "temperature": 0.8,
+    "stop": ["&lt;/s&gt;"]
+  }'</pre>
+
+  <h3>JavaScript/Node</h3>
+  <pre>const API = "http://localhost:8080";
+
+async function waitReady(timeout = 30000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      const res = await fetch(`${API}/health`);
+      if (res.ok) return true;
+    } catch {}
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return false;
+}
+
+async function complete(prompt, options = {}) {
+  const resp = await fetch(`${API}/completion`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, n_predict: 128, ...options })
+  });
+  return resp.json();
+}
+
+// Usage
+if (await waitReady()) {
+  const result = await complete("Tell me a joke");
+  console.log(result.content);
+}</pre>
+</section>
+
+<section>
+  <h2>Timing & Polling</h2>
+
+  <h3>Model Load Times</h3>
+  <pre>IQ3_XXS (default):  ~2.3 seconds
+REAP-MTP:              ~9.6 seconds
+
+Service stop:          ~2 seconds
+Total switch time:     ~4-12 seconds</pre>
+
+  <h3>Health Polling Pattern</h3>
+  <pre># Wait for server to be ready (max 30s)
+timeout 30 bash -c 'until curl -s http://localhost:8080/health | grep -q "ok"; do sleep 0.5; done'
+echo "Server ready"</pre>
+
+  <h3>Switch + Wait Pattern</h3>
+  <pre>llama-server switch qwen3.6-reap
+# Server stops (~2s), symlink updates, then starts loading (~9.6s)
+timeout 60 bash -c 'until curl -s http://localhost:8080/health | grep -q "ok"; do sleep 0.5; done'
+echo "REAP model ready"</pre>
+</section>
+
+<section>
+  <h2>Troubleshooting</h2>
+
+  <table class="models-table">
+    <tr><th>Issue</th><th>Solution</th></tr>
+    <tr><td>Server won't start</td><td>Run <code>journalctl --user -u llama-server -e</code> to check logs</td></tr>
+    <tr><td>Slow generation</td><td>Check GPU usage: <code>nvidia-smi</code></td></tr>
+    <tr><td>OOM errors</td><td>Switch to smaller model or reduce context</td></tr>
+    <tr><td>Switch fails</td><td>Run <code>llama-server switch qwen3.8-27b-iq3</code> to reset</td></tr>
+  </table>
+</section>
+
+</main>
+
+<script>
+const API = "http://localhost:8080";
+
+function toggleEndpoint(id) {
+  const el = document.getElementById(id);
+  const body = el.querySelector('.endpoint-body');
+  const header = el.querySelector('.endpoint-header');
+  body.classList.toggle('open');
+  header.classList.toggle('open');
+}
+
+function showResponse(id, status, time, body) {
+  const el = document.getElementById(id);
+  document.getElementById(id.replace('Response', 'Status')).textContent = status;
+  document.getElementById(id.replace('Response', 'Time')).textContent = `${time}ms`;
+  document.getElementById(id.replace('Response', 'Body')).textContent = JSON.stringify(body, null, 2);
+  el.classList.add('show');
+}
+
+async function testHealth() {
+  const start = Date.now();
+  try {
+    const res = await fetch(`${API}/health`);
+    const time = Date.now() - start;
+    const data = await res.json();
+    showResponse('healthResponse', `${res.status} OK`, time, data);
+    document.getElementById('healthStatus2').style.color = res.ok ? 'var(--green)' : 'var(--red)';
+  } catch (e) {
+    showResponse('healthResponse', 'Error', Date.now() - start, { error: e.message });
+  }
+}
+
+async function testCompletion() {
+  const start = Date.now();
+  const payload = {
+    prompt: document.getElementById('compPrompt').value,
+    n_predict: parseInt(document.getElementById('compTokens').value),
+    temperature: parseFloat(document.getElementById('compTemp').value),
+    cache_type_k: document.getElementById('compKVK').value,
+    cache_type_v: document.getElementById('compKVV').value
+  };
+  try {
+    const res = await fetch(`${API}/completion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const time = Date.now() - start;
+    const data = await res.json();
+    const display = { content: data.content?.substring(0, 200) + '...', tokens: data.tokens_predicted, cached: data.tokens_cached };
+    showResponse('compResponse', `${res.status} OK`, time, display);
+  } catch (e) {
+    showResponse('compResponse', 'Error', Date.now() - start, { error: e.message });
+  }
+}
+
+async function testInfill() {
+  const start = Date.now();
+  const payload = {
+    prompt: document.getElementById('infillPrefix').value,
+    suffix: document.getElementById('infillSuffix').value,
+    n_predict: parseInt(document.getElementById('infillTokens').value)
+  };
+  try {
+    const res = await fetch(`${API}/infill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const time = Date.now() - start;
+    const data = await res.json();
+    showResponse('infillResponse', `${res.status} OK`, time, data);
+  } catch (e) {
+    showResponse('infillResponse', 'Error', Date.now() - start, { error: e.message });
+  }
+}
+
+// Check health on load
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API}/health`);
+    if (res.ok) {
+      document.getElementById('healthDot').classList.add('green');
+      document.getElementById('healthStatus').textContent = 'Server ready';
+      document.getElementById('healthStatus').style.color = 'var(--green)';
+
+      // Get model info
+      const r = await fetch(`${API}/completion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: 'x', n_predict: 1 })
+      });
+      const d = await r.json();
+      const model = d.model || '';
+      document.getElementById('currentModel').textContent = model.includes('Qwen3.6') ? 'Qwen3.6 REAP' : 'Qwen3.8 IQ3';
+    } else {
+      throw new Error('not ok');
+    }
+  } catch {
+    document.getElementById('healthDot').classList.add('red');
+    document.getElementById('healthStatus').textContent = 'Server offline';
+    document.getElementById('healthStatus').style.color = 'var(--red)';
+  }
+}
+
+checkHealth();
+setInterval(checkHealth, 5000);
+</script>
+
+</body>
+</html>

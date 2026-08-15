@@ -1,0 +1,36 @@
+#!/bin/bash
+# llama.cpp docs server - lightweight static file server for API docs
+# Runs on port 8081
+
+case "$1" in
+    start)
+        cd /home/mkinney/.llama-server/docs
+        nohup python3 -m http.server 8081 > /tmp/docs-server.log 2>&1 &
+        sleep 1
+        if curl -s http://localhost:8081/ | grep -q "Interactive Docs"; then
+            echo "Docs server started on http://192.168.1.202:8081/"
+        else
+            echo "Failed to start docs server"
+            exit 1
+        fi
+        ;;
+    stop)
+        pkill -f "http.server 8081" 2>/dev/null
+        echo "Docs server stopped"
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    status)
+        if curl -s http://localhost:8081/ | grep -q "Interactive Docs"; then
+            echo "Docs server running: http://192.168.1.202:8081/"
+        else
+            echo "Docs server not running"
+        fi
+        ;;
+    *)
+        echo "Usage: llama-docs-server {start|stop|restart|status}"
+        ;;
+esac

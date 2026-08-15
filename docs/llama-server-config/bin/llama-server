@@ -1,0 +1,84 @@
+#!/bin/bash
+set -e
+
+SERVICE="llama-server.service"
+LLAMA_DIR="$HOME/.llama-server"
+MODEL_FILE="$LLAMA_DIR/model.gguf"
+
+switch_model() {
+    local model_path="$1"
+    if [ ! -f "$model_path" ]; then
+        echo "Error: model not found: $model_path"
+        exit 1
+    fi
+    echo "Switching model to: $model_path"
+    ln -sf "$model_path" "$MODEL_FILE"
+    systemctl --user restart "$SERVICE"
+    echo "Model switched and service restarted."
+}
+
+case "$1" in
+    start)
+        systemctl --user start "$SERVICE"
+        echo "llama-server started."
+        ;;
+    stop)
+        systemctl --user stop "$SERVICE"
+        echo "llama-server stopped."
+        ;;
+    restart)
+        systemctl --user restart "$SERVICE"
+        echo "llama-server restarted."
+        ;;
+    status)
+        systemctl --user status "$SERVICE"
+        ;;
+    switch)
+        if [ -z "$2" ]; then
+            echo "Current model: $(readlink -f "$MODEL_FILE")"
+            echo "Available models:"
+            echo "  qwen3.8-27b-iq3  - Qwen3.8-27B UD-IQ3_XXS (default, 128K ctx)"
+            echo "  qwen3.6-reap     - Qwen3.6-35B REAP-MTP (fast small tasks)"
+            echo "Usage: llama-server switch <model-alias>"
+            echo ""
+            echo "Or specify any GGUF path:"
+            echo "  llama-server switch /path/to/model.gguf"
+        else
+            case "$2" in
+                qwen3.8-27b-iq3)
+                    switch_model "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf"
+                    ;;
+                qwen3.6-reap)
+                    switch_model "/home/mkinney/Models/JZC973/Qwen3.6-35B-REAP-MTP-UD-GGUF-Collection/Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf"
+                    ;;
+                *)
+                    if [ -f "$2" ]; then
+                        switch_model "$2"
+                    else
+                        echo "Unknown model: $2"
+                        echo "Use 'llama-server switch' to see available models."
+                        exit 1
+                    fi
+                    ;;
+            esac
+        fi
+        ;;
+    log)
+        journalctl --user -u "$SERVICE" -f
+        ;;
+    *)
+        echo "Usage: llama-server {start|stop|restart|status|switch|log}"
+        echo ""
+        echo "  start   - Start the llama-server"
+        echo "  stop    - Stop the llama-server"
+        echo "  restart - Restart the llama-server"
+        echo "  status  - Show service status"
+        echo "  switch  - Switch model (see available below)"
+        echo "  log     - Follow service logs"
+        echo ""
+        echo "Models:"
+        echo "  qwen3.8-27b-iq3  - Qwen3.8-27B UD-IQ3_XXS (default, 128K ctx)"
+        echo "  qwen3.6-reap     - Qwen3.6-35B REAP-MTP (fast small tasks)"
+        exit 1
+        ;;
+esac
