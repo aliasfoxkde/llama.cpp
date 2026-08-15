@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""
+llama-proxy: Reverse proxy for llama-server with model switching support.
+Adds:
+- /model endpoint to get current model
+- /model/switch endpoint to switch models (restarts backend)
+"""
+
+import subprocess
+import json
+import sys
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse
+import threading
+import time
+import os
+
+LLAMA_HOST = "localhost"
+LLAMA_PORT = 8080
+PROXY_PORT = 8082
+
+MODEL_ALIASES = {
+    "Qwen3.8-27B": "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf",
+    "Qwen3.6-35B-A3B-REAP-MTP": "/home/mkinney/Models/JZC973/Qwen3.6-35B-REAP-MTP-UD-GGUF-Collection/Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf",
+}
+
+current_model = os.environ.get("CURRENT_MODEL", "Qwen3.8-27B")
+model_lock = threading.Lock()
+server_process = None
+
+
+def start_llama_server(model_path):
+    """Start or restart llama-server with the given model."""
+    global server_process
+
+    # Kill existing server
+    subprocess.run(["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL)
+    time.sleep(2)
+
+    cmd = [
+        "/home/mkinney/Repos/llama.cpp/build-cuda-new/bin/llama-server",
+        "-m", model_path,
+        "-c", "131072",
+        "-tb", "256",
+        "-ctk", "q4_0",
+        "-ctv", "q4_0",
+        "-ngl", "99",
+        "-t", "16",
+        "-np", "4",
+        "-fa", "on",
+        "--sleep-idle-seconds", "300",
+        "--host", "0.0.0.0",
+        "--port", str(LLAMA_PORT),
+        "--path", "/home/mkinney/.llama-server/docs"
+    ]
+
+    server_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Wait for server to be ready
+    import urllib.request
+    for _ in range(60):
+        try:
+            urllib.request.urlopen(f"http://{LLAMA_HOST}:{LLAMA_PORT}/health", timeout=1)
+            return True
+        except:
+            time.sleep(0.5)
+    return False
+
+
+def switch_model(alias):
+    """Switch to a different model."""
+    global current_model
+
+    if alias not in MODEL_ALIASES:
+        return False, f"Unknown model: {alias}. Available: {', '.join(MODEL_ALIASES.keys())}"
+
+    model_path = MODEL_ALIASES[alias]
+    if not os.path.exists(model_path):
+        return False, f"Model file not found: {model_path}"
+
+    current_model = alias
+    success = start_llama_server(model_path)
+    if success:
+        return True, f"Switched to {alias}"
+    return False, "Failed to start server"
+
+
+class ProxyHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass  # Silence logging
+
+    def do_GET(self):
+        if self.path == "/model" or self.path == "/model/":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            response = {
+                "model": MODEL_ALIASES.get(current_model, ""),
+                "alias": current_model,
+                "available": list(MODEL_ALIASES.keys())
+            }
+            self.wfile.write(json.dumps(response).encode())
+        else:
+            # Forward everything else to llama-server
+            self.proxy_request("GET")
+
+    def do_POST(self):
+        if self.path == "/model/switch" or self.path == "/model/switch/":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode()
+            try:
+                data = json.loads(body)
+                alias = data.get("model") or data.get("alias")
+                if not alias:
+                    self.send_error(400, "model or alias required")
+                    return
+
+                with model_lock:
+                    success, msg = switch_model(alias)
+                    if success:
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"status": "ok", "message": msg}).encode())
+                    else:
+                        self.send_error(400, msg)
+            except Exception as e:
+                self.send_error(400, str(e))
+        else:
+            self.proxy_request("POST")
+
+    def proxy_request(self, method):
+        """Forward request to llama-server."""
+        import urllib.request
+        import urllib.error
+
+        url = f"http://{LLAMA_HOST}:{LLAMA_PORT}{self.path}"
+
+        headers = {}
+        for k, v in self.headers.items():
+            if k.lower() not in ("host", "connection"):
+                headers[k] = v
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length) if content_length else None
+
+        try:
+            req = urllib.request.Request(url, data=body, headers=headers, method=method)
+            resp = urllib.request.urlopen(req, timeout=300)
+
+            self.send_response(resp.status)
+            for k, v in resp.headers.items():
+                if k.lower() not in ("transfer-encoding", "connection"):
+                    self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(resp.read())
+        except urllib.error.URLError as e:
+            self.send_error(502, str(e))
+
+
+def main():
+    # Start with default model
+    start_llama_server(MODEL_ALIASES[current_model])
+
+    server = HTTPServer(("0.0.0.0", PROXY_PORT), ProxyHandler)
+    print(f"Proxy running on port {PROXY_PORT}")
+    print(f"API: http://localhost:{PROXY_PORT}/completion")
+    print(f"Model info: GET http://localhost:{PROXY_PORT}/model")
+    print(f"Switch model: POST http://localhost:{PROXY_PORT}/model/switch {{\"alias\": \"qwen3.6-reap\"}}")
+    sys.stdout.flush()
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,58 +1,68 @@
 # Llama Server Configuration
 
-Systemd-managed llama.cpp server for Qwen3.8-27B and Qwen3.6-35B REAP models.
+Systemd-managed llama.cpp server with proxy for model switching.
+
+## Architecture
+
+- **Proxy (port 8082):** Handles API requests, model switching, forwards to llama-server
+- **llama-server (port 8080):** Actual inference server
+- **Docs server (port 8081):** API documentation
 
 ## Structure
 
 ```
 llama-server-config/
 ├── README.md              # This file
-├── llama-server-start.sh  # Primary model (IQ3_XXS) startup script
-├── llama-server-reap.sh   # REAP MTP model startup script
-├── llama-server-api.md    # API reference (Markdown)
-├── llama-server-api.html  # API reference (HTML, interactive)
+├── llama-server-start.sh  # Startup script reference
+├── llama-server-reap.sh   # REAP model startup reference
+├── llama-server-api.md    # API reference
+├── llama-server-api.html  # Interactive API docs
+├── llama-proxy           # Model-switching proxy script
 ├── systemd/
-│   ├── llama-server.service       # API server systemd service
-│   └── llama-docs-server.service  # Docs server systemd service
-├── bin/
-│   ├── llama-server       # Convenience wrapper (start/stop/switch)
-│   └── llama-docs-server # Docs server control script
-└── model-symlink/
-    └── current-model.txt # Current model path (symlink target)
+│   ├── llama-server.service
+│   ├── llama-docs-server.service
+│   └── llama-proxy.service
+└── bin/
+    ├── llama-server       # Convenience wrapper
+    └── llama-docs-server
 ```
 
 ## Setup
 
 1. Copy `systemd/*.service` to `~/.config/systemd/user/`
-2. Copy `bin/*` to `~/.local/bin/` and ensure it's in PATH
-3. Create model symlink: `mkdir -p ~/.llama-server && ln -sf <model-path> ~/.llama-server/model.gguf`
+2. Copy `bin/*` and `llama-proxy` to `~/.local/bin/`
+3. Run `llama-proxy &` to start everything
 
 ## Usage
 
 ```bash
-llama-server start     # Start API server (port 8080)
-llama-server stop      # Stop
-llama-server restart   # Restart
-llama-server status    # Status
-llama-server switch    # List available models
-llama-server switch qwen3.6-reap  # Switch to REAP model
+# API (through proxy on port 8082)
+curl http://localhost:8082/completion -d '{"prompt":"test","n_predict":32}'
+curl http://localhost:8082/health
+curl http://localhost:8082/model  # Get current model
 
-llama-docs-server start   # Start docs server (port 8081)
-llama-docs-server stop     # Stop
+# Switch model (via proxy API)
+curl -X POST http://localhost:8082/model/switch \
+  -H "Content-Type: application/json" \
+  -d '{"alias": "Qwen3.6-35B-A3B-REAP-MTP"}'
+
+# Or use wrapper
+llama-server switch Qwen3.6-35B-A3B-REAP-MTP
 ```
-
-## Endpoints
-
-- **API:** `http://host:8080/v1/completion`
-- **Health:** `http://host:8080/v1/health`
-- **Docs:** `http://host:8081/`
 
 ## Models
 
 | Alias | Model | Load Time |
 |-------|-------|-----------|
-| qwen3.8-27b-iq3 | Qwen3.8-27B UD-IQ3_XXS | ~2.3s |
-| qwen3.6-reap | Qwen3.6-35B REAP-MTP | ~9.6s |
+| Qwen3.8-27B | Qwen3.8-27B UD-IQ3_XXS | ~2.3s |
+| Qwen3.6-35B-A3B-REAP-MTP | Qwen3.6-35B REAP-MTP | ~9.6s |
+
+## Endpoints
+
+- **API:** `http://host:8082/completion`
+- **Health:** `http://host:8082/health`
+- **Model info:** `http://host:8082/model`
+- **Docs:** `http://host:8081/`
 
 ## Timing
 

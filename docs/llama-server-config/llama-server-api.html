@@ -576,7 +576,7 @@ llama-server switch qwen3.8-27b-iq3  # Switch back</pre>
   <h3>Python</h3>
   <pre>import requests, time
 
-API = "http://localhost:8080"
+API = "http://localhost:8082"
 
 def wait_ready(timeout=30):
     """Poll health until ready."""
@@ -603,15 +603,15 @@ if wait_ready():
 
   <h3>curl</h3>
   <pre># Health check
-curl http://localhost:8080/health
+curl http://localhost:8082/health
 
 # Completion
-curl -X POST http://localhost:8080/completion \
+curl -X POST http://localhost:8082/completion \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Hello world","n_predict":32}'
 
 # With options
-curl -X POST http://localhost:8080/completion \
+curl -X POST http://localhost:8082/completion \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Write a short story",
@@ -621,7 +621,7 @@ curl -X POST http://localhost:8080/completion \
   }'</pre>
 
   <h3>JavaScript/Node</h3>
-  <pre>const API = "http://localhost:8080";
+  <pre>const API = "http://localhost:8082";
 
 async function waitReady(timeout = 30000) {
   const start = Date.now();
@@ -663,13 +663,13 @@ Total switch time:     ~4-12 seconds</pre>
 
   <h3>Health Polling Pattern</h3>
   <pre># Wait for server to be ready (max 30s)
-timeout 30 bash -c 'until curl -s http://localhost:8080/health | grep -q "ok"; do sleep 0.5; done'
+timeout 30 bash -c 'until curl -s http://localhost:8082/health | grep -q "ok"; do sleep 0.5; done'
 echo "Server ready"</pre>
 
   <h3>Switch + Wait Pattern</h3>
   <pre>llama-server switch qwen3.6-reap
 # Server stops (~2s), symlink updates, then starts loading (~9.6s)
-timeout 60 bash -c 'until curl -s http://localhost:8080/health | grep -q "ok"; do sleep 0.5; done'
+timeout 60 bash -c 'until curl -s http://localhost:8082/health | grep -q "ok"; do sleep 0.5; done'
 echo "REAP model ready"</pre>
 </section>
 
@@ -688,7 +688,7 @@ echo "REAP model ready"</pre>
 </main>
 
 <script>
-const API = "http://localhost:8080";
+const API = "http://localhost:8082";
 
 function toggleEndpoint(id) {
   const el = document.getElementById(id);

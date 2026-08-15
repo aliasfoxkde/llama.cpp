@@ -37,18 +37,18 @@ case "$1" in
         if [ -z "$2" ]; then
             echo "Current model: $(readlink -f "$MODEL_FILE")"
             echo "Available models:"
-            echo "  qwen3.8-27b-iq3  - Qwen3.8-27B UD-IQ3_XXS (default, 128K ctx)"
-            echo "  qwen3.6-reap     - Qwen3.6-35B REAP-MTP (fast small tasks)"
+            echo "  Qwen3.8-27B  - Qwen3.8-27B UD-IQ3_XXS (default, 128K ctx)"
+            echo "  Qwen3.6-35B-A3B-REAP-MTP     - Qwen3.6-35B REAP-MTP (fast small tasks)"
             echo "Usage: llama-server switch <model-alias>"
             echo ""
             echo "Or specify any GGUF path:"
             echo "  llama-server switch /path/to/model.gguf"
         else
             case "$2" in
-                qwen3.8-27b-iq3)
+                Qwen3.8-27B)
                     switch_model "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf"
                     ;;
-                qwen3.6-reap)
+                Qwen3.6-35B-A3B-REAP-MTP)
                     switch_model "/home/mkinney/Models/JZC973/Qwen3.6-35B-REAP-MTP-UD-GGUF-Collection/Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf"
                     ;;
                 *)
@@ -77,8 +77,8 @@ case "$1" in
         echo "  log     - Follow service logs"
         echo ""
         echo "Models:"
-        echo "  qwen3.8-27b-iq3  - Qwen3.8-27B UD-IQ3_XXS (default, 128K ctx)"
-        echo "  qwen3.6-reap     - Qwen3.6-35B REAP-MTP (fast small tasks)"
+        echo "  Qwen3.8-27B  - Qwen3.8-27B UD-IQ3_XXS (default, 128K ctx)"
+        echo "  Qwen3.6-35B-A3B-REAP-MTP     - Qwen3.6-35B REAP-MTP (fast small tasks)"
         exit 1
         ;;
 esac

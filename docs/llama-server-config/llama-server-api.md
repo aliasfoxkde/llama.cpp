@@ -4,7 +4,7 @@
 
 Systemd-managed llama.cpp server running on RTX 5060 Ti 16GB (Fedora).
 
-**Endpoint:** `http://localhost:8080`
+**Endpoint:** `http://localhost:8082`
 
 ---
 
@@ -31,8 +31,8 @@ llama-server switch <alias>     # Switch model (auto-restarts)
 
 | Alias | Model | Size | Load Time | Best For |
 |-------|-------|------|-----------|----------|
-| `qwen3.8-27b-iq3` | Qwen3.8-27B UD-IQ3_XXS | 12GB | ~2.3s | Code/agent tasks, 128K ctx |
-| `qwen3.6-reap` | Qwen3.6-35B REAP-MTP | 13GB | ~9.6s | Fast small tasks, MTP |
+| `Qwen3.8-27B` | Qwen3.8-27B UD-IQ3_XXS | 12GB | ~2.3s | Code/agent tasks, 128K ctx |
+| `Qwen3.6-35B-A3B-REAP-MTP` | Qwen3.6-35B REAP-MTP | 13GB | ~9.6s | Fast small tasks, MTP |
 
 ### Model Specifications
 
@@ -57,13 +57,13 @@ llama-server switch <alias>     # Switch model (auto-restarts)
 
 ### Health Check
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:8082/health
 # Response: {"status":"ok"}
 ```
 
 ### Completion (POST)
 ```bash
-curl -X POST http://localhost:8080/completion \
+curl -X POST http://localhost:8082/completion \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Your prompt here",
@@ -85,7 +85,7 @@ curl -X POST http://localhost:8080/completion \
 
 ### Infill (POST)
 ```bash
-curl -X POST http://localhost:8080/infill \
+curl -X POST http://localhost:8082/infill \
   -H "Content-Type: application/json" \
   -d '{"prompt": "prefix", "suffix": "suffix", "n_predict": 64}'
 ```
@@ -98,11 +98,11 @@ You can override KV cache quantization per-request (server uses q4_0/q4_0):
 
 ```bash
 # Use f16 KV for a specific request
-curl -X POST http://localhost:8080/completion \
+curl -X POST http://localhost:8082/completion \
   -d '{"prompt":"test","n_predict":32,"cache_type_k":"f16","cache_type_v":"f16"}'
 
 # Mix K and V types
-curl -X POST http://localhost:8080/completion \
+curl -X POST http://localhost:8082/completion \
   -d '{"prompt":"test","n_predict":32,"cache_type_k":"q8_0","cache_type_v":"q4_0"}'
 ```
 
@@ -121,7 +121,7 @@ curl -X POST http://localhost:8080/completion \
 ### Health Polling
 ```bash
 # Wait for server to be ready
-while ! curl -s http://localhost:8080/health > /dev/null 2>&1; do sleep 0.5; done
+while ! curl -s http://localhost:8082/health > /dev/null 2>&1; do sleep 0.5; done
 echo "Server ready"
 ```
 
@@ -140,7 +140,7 @@ echo "Server ready"
 import requests
 import time
 
-API = "http://localhost:8080"
+API = "http://localhost:8082"
 
 def wait_ready(timeout=30):
     start = time.time()
@@ -189,5 +189,5 @@ journalctl --user -u llama-server -e  # Recent logs
 
 ### Model switch fails
 ```bash
-llama-server switch qwen3.8-27b-iq3  # Force default
+llama-server switch Qwen3.8-27B  # Force default
 ```
