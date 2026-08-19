@@ -106,20 +106,28 @@ llama-server -m Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf \
 
 ## Key Findings
 
-1. **Turbo is 3.3x faster** - ~118 vs ~36 TPS
-2. **Both support 160K CTX** - max context on 16GB VRAM
-3. **Ultra has vision** - only model with multimodal support
-4. **MoE architecture** - Turbo uses fewer active parameters for speed
-5. **IQ3_XXS quality** - good balance of size and capability
-6. **Both pass quality tests** - math, logic, code, factual recall all correct
-7. **10/10 reliability** - no failures in sequential request testing
+1. **Turbo is 3.3x faster single-stream** - ~118 vs ~36 TPS
+2. **Concurrency TPS is GPU-limited** - both hit ~267 TPS peak at conc 4
+3. **Both support 160K CTX** - max context on 16GB VRAM
+4. **Ultra has vision** - only model with multimodal support
+5. **MoE architecture** - Turbo uses fewer active parameters for single-stream speed
+6. **IQ3_XXS quality** - good balance of size and capability
+7. **Both pass quality tests** - math, logic, code, factual recall all correct
+8. **10/10 reliability** - no failures in sequential request testing
+
+## Concurrency Scaling
+
+Single-stream TPS differs significantly, but under concurrent load both models reach similar peak throughput (~267 TPS at concurrency 4) because the GPU is the bottleneck.
 
 ## Validation Results (Aug 19 2026)
 
 | Test | Ultra | Turbo |
 |------|-------|-------|
 | TPS @ 160K | ~36 | ~118 |
-| Concurrency 4 | ~157 TPS | ~192 TPS (peak 220) |
+| Concurrency 2 | ~160 | ~160 |
+| Concurrency 4 | **~267 (peak)** | **~267 (peak)** |
+| Concurrency 6 | ~200 | ~218 |
+| Concurrency 8 | ~246 | ~246 |
 | Math (15*23) | ✅ 345 | ✅ 345 |
 | Logic syllogism | ✅ Correct | ✅ Correct |
 | Code generation | ✅ Works | ✅ Works |
