@@ -1,19 +1,60 @@
 # Model Capabilities Configuration
 
 **Date:** Wed Aug 19 2026
-**Updated:** With capability-based model naming
+**Updated:** Added Fast tier with IQ2_XXS + DSpark
 
 ---
 
 ## Model Capability Tiers
 
-| Capability | Model | Quant | CTX | TPS | Vision | MTP | VRAM |
-|------------|-------|-------|-----|-----|--------|-----|------|
-| **Pro** | Qwen3.8-27B | IQ3_XXS | 160K | ~31 | ❌ | ❌ | 14.1GB |
-| **Vision** | Qwen3.8-27B + mmproj | IQ3_XXS | 128K | ~31 | ✅ | ❌ | 15.4GB |
-| **Turbo** | Qwen3.6-35B-A3B (MoE) | Q3_K_M | 160K | ~107 | ❌ | ❌* | 14.5GB |
+| Capability | Model | Quant | CTX | TPS | Vision | Runtime | VRAM |
+|------------|-------|-------|-----|-----|--------|---------|------|
+| **Pro** | Qwen3.8-27B | IQ3_XXS | 160K | ~31 | ❌ | Stock | 14.1GB |
+| **Vision** | Qwen3.8-27B + mmproj | IQ3_XXS | 128K | ~31 | ✅ | Stock | 15.4GB |
+| **Turbo** | Qwen3.6-35B-A3B (MoE) | Q3_K_M | 160K | ~107 | ❌ | Stock | 14.5GB |
+| **Fast** | Qwen3.8-27B + DSpark | IQ2_XXS | 96K | ~77 | ❌ | TQ3 fork | ~11.5GB |
 
-*MTP available but not used when VRAM-constrained (vision OOMs with MTP at any CTX)
+---
+
+## Detailed Model Specs
+
+### Pro - Maximum Context Text
+- **Model:** Unsloth Qwen3.8-27B
+- **Quantization:** IQ3_XXS (~12GB on disk)
+- **Max CTX:** 160K (192K crashes)
+- **Speed:** ~31 TPS
+- **Runtime:** Stock llama.cpp
+- **Best for:** Long documents, code, complex reasoning
+- **Notes:** Largest CTX available, no speculative decoding
+
+### Vision - Multimodal
+- **Model:** Unsloth Qwen3.8-27B + mmproj-F16.gguf
+- **Quantization:** IQ3_XXS
+- **Max CTX:** 128K (mmproj takes ~1GB VRAM)
+- **Speed:** ~31 TPS
+- **Runtime:** Stock llama.cpp
+- **Best for:** Image understanding, documents with figures
+- **Notes:** Only model with vision support
+
+### Turbo - Maximum Speed
+- **Model:** JZC973 Qwen3.6-35B-A3B REAP MTP (MoE)
+- **Quantization:** Q3_K_M REAP (~13.4GB on disk)
+- **Max CTX:** 160K
+- **Speed:** ~107 TPS (3.4x faster than Pro)
+- **Runtime:** Stock llama.cpp
+- **Best for:** Fast responses, high-volume inference
+- **Notes:** MoE architecture, built-in MTP available but unused
+- **Concurrency:** ~215 TPS @ 4 concurrent requests
+
+### Fast - High Speed Alternative
+- **Model:** Unsloth Qwen3.8-27B + DSpark Q8_0 draft
+- **Quantization:** IQ2_XXS (9GB) + DSpark Q8_0 (1.4GB)
+- **Max CTX:** 96K
+- **Speed:** ~77 TPS (2.5x faster than Pro)
+- **Runtime:** TQ3 fork (turbo-tan)
+- **Best for:** Speed-critical text tasks
+- **Notes:** Requires TQ3 fork build, no vision
+- **Status:** TQ3 fork not yet built locally
 
 ---
 
@@ -98,13 +139,41 @@ curl -X POST http://localhost:8082/model \
 
 ---
 
+## Speed Ranking
+
+| Rank | Capability | TPS | CTX | Use Case |
+|------|------------|-----|-----|----------|
+| 🥇 | **Turbo** | ~107 | 160K | Speed-critical tasks |
+| 🥈 | **Fast** | ~77 | 96K | Speed + context (requires TQ3) |
+| 🥉 | **Pro** | ~31 | 160K | Best quality + max CTX |
+| 🖼️ | **Vision** | ~31 | 128K | Image input |
+
+---
+
 ## Key Findings
 
-1. **Turbo is 3.4x faster** than Pro/Vision (~107 vs ~31 TPS)
-2. **Vision caps at 128K** due to mmproj VRAM overhead (~1GB)
-3. **192K unstable** on 16GB VRAM - crashes on load
-4. **MTP + Vision OOM** - can't use MTP speculative decoding with vision
-5. **MoE advantage** - Qwen3.6's architecture enables 3x speed despite similar VRAM
+1. **Turbo is fastest** - 3.4x faster than Pro (~107 vs ~31 TPS)
+2. **Fast is 2.5x Pro** - IQ2_XXS + DSpark at 77 TPS (needs TQ3 build)
+3. **Vision caps at 128K** - mmproj takes ~1GB VRAM
+4. **192K+ unstable** - crashes on 16GB VRAM
+5. **MTP + Vision OOM** - can't combine speculative decoding with vision
+6. **MoE advantage** - Qwen3.6's architecture enables 3x speed
+
+---
+
+## TQ3 Fork Requirements
+
+Fast mode requires building the TQ3 fork:
+
+```bash
+git clone https://github.com/turbo-tan/llama.cpp.git /home/mkinney/Repos/llama.cpp-tq3
+cd /home/mkinney/Repos/llama.cpp-tq3
+mkdir build && cd build
+cmake .. -GNinja -DLLAMA_CUDA=ON -DCMAKE_BUILD_TYPE=Release
+ninja
+```
+
+**DSpark draft model:** Already downloaded at `/home/mkinney/Models/magnitudedev/Qwen3.8-27B-DSpark-GGUF/Qwen3.8-27B-DSpark-Q8_0.gguf` (1.4GB)
 
 ---
 
