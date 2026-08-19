@@ -28,7 +28,7 @@
 - **Model:** JZC973 Qwen3.6-35B-A3B REAP MTP
 - **Quantization:** Q3_K_M REAP (~13.4GB on disk)
 - **Max CTX:** 160K
-- **Speed:** ~118 TPS measured, ~215 TPS @ concurrency 4
+- **Speed:** ~118 TPS single, ~192 TPS @ concurrency 4 (peak 220)
 - **Vision:** ❌ Text only
 - **Parameters:** 35B MoE (~27B active)
 - **Runtime:** Stock llama.cpp (with --reasoning off)
@@ -41,8 +41,8 @@
 
 | Rank | Model | TPS | CTX | Concurrency | Use Case |
 |------|-------|-----|-----|-------------|----------|
-| 🥇 | **Turbo** | ~118 | 160K | ~215 @ 4 | Speed-critical tasks |
-| 🥈 | **Ultra** | ~36 | 160K | - | Quality + vision |
+| 🥇 | **Turbo** | ~118 | 160K | ~192 @ 4 (peak 220) | Speed-critical tasks |
+| 🥈 | **Ultra** | ~36 | 160K | ~157 @ 4 | Quality + vision |
 
 ---
 
@@ -119,7 +119,7 @@ llama-server -m Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf \
 | Test | Ultra | Turbo |
 |------|-------|-------|
 | TPS @ 160K | ~36 | ~118 |
-| Concurrency 4 | - | ~215 |
+| Concurrency 4 | ~157 TPS | ~192 TPS (peak 220) |
 | Math (15*23) | ✅ 345 | ✅ 345 |
 | Logic syllogism | ✅ Correct | ✅ Correct |
 | Code generation | ✅ Works | ✅ Works |
