@@ -354,7 +354,7 @@
       <span>Model: <strong id="currentModel">—</strong></span>
     </div>
     <div class="status-item">
-      <span>Context: <strong>128K</strong></span>
+      <span>Context: <strong>160K</strong></span>
     </div>
   </div>
 </header>
@@ -367,18 +367,18 @@
   <div class="timing-grid">
     <div class="timing-card">
       <div class="value">~2.3s</div>
-      <div class="label">IQ3_XXS Load Time</div>
+      <div class="label">Ultra Load Time</div>
     </div>
     <div class="timing-card">
       <div class="value">~9.6s</div>
-      <div class="label">REAP-MTP Load Time</div>
+      <div class="label">Turbo Load Time</div>
     </div>
     <div class="timing-card">
-      <div class="value">~30 t/s</div>
-      <div class="label">Concurrent Throughput</div>
+      <div class="value">~31-107 t/s</div>
+      <div class="label">Single-Stream TPS</div>
     </div>
     <div class="timing-card">
-      <div class="value">128K</div>
+      <div class="value">160K</div>
       <div class="label">Max Context</div>
     </div>
   </div>
@@ -403,25 +403,25 @@
     </thead>
     <tbody>
       <tr>
-        <td><code>qwen3.8-27b-iq3</code></td>
-        <td>Qwen3.8-27B UD-IQ3_XXS</td>
+        <td><code>Ultra</code></td>
+        <td>Qwen3.8-27B UD-IQ3_XXS + vision</td>
         <td>12GB</td>
         <td>~2.3s</td>
-        <td>Code/agent tasks, large context</td>
+        <td>Quality + multimodal, 160K ctx</td>
       </tr>
       <tr>
-        <td><code>qwen3.6-reap</code></td>
+        <td><code>Turbo</code></td>
         <td>Qwen3.6-35B REAP-MTP</td>
         <td>13GB</td>
         <td>~9.6s</td>
-        <td>Fast small tasks, MTP speculative decoding</td>
+        <td>Speed (~107 TPS), 160K ctx</td>
       </tr>
     </tbody>
   </table>
 
   <h3>Switching Models</h3>
-  <pre>llama-server switch qwen3.6-reap  # Switch to REAP
-llama-server switch qwen3.8-27b-iq3  # Switch back</pre>
+  <pre>curl -X POST http://localhost:8082/model -d '{"model": "Turbo"}'  # Switch to Turbo
+curl -X POST http://localhost:8082/model -d '{"model": "Ultra"}'  # Switch to Ultra</pre>
 </section>
 
 <section>
@@ -521,15 +521,30 @@ llama-server switch qwen3.8-27b-iq3  # Switch back</pre>
         </div>
       </div>
 
-      <h3>Response Fields</h3>
+      <h3>Response Fields (OpenAI-compatible)</h3>
       <pre>{
-  "content": "...",           // Generated text
-  "tokens_predicted": 128,    // Tokens generated
-  "tokens_evaluated": 12,     // Prompt tokens processed
-  "tokens_cached": 0,        // Cache hits
-  "stop": true,              // Stopped due to stop token?
-  "model": "/path/to/model"  // Model file
+  "id": "cmpl-abc123",           // Unique completion ID
+  "object": "text_completion",   // Always "text_completion"
+  "created": 1234567890,        // Unix timestamp
+  "model": "Qwen3.8-27B",       // Model name
+  "system_fingerprint": "...",   // Backend fingerprint
+  "choices": [{
+    "text": "...",               // Generated text
+    "index": 0,                  // Always 0 for streaming
+    "logprobs": null,            // Always null
+    "finish_reason": "stop"      // "stop", "length", or "content_filter"
+  }],
+  "usage": {
+    "prompt_tokens": 12,         // Tokens in prompt
+    "completion_tokens": 128,    // Tokens generated
+    "total_tokens": 140          // Sum of above
+  }
 }</pre>
+      <h4>Streaming Response</h4>
+      <p>When <code>stream: true</code>, each chunk is:</p>
+      <pre>data: {"id":"cmpl-abc123","object":"text_completion","choices":[{"text":"...","index":0,"logprobs":null,"finish_reason":null}]}
+data: {"id":"cmpl-abc123","object":"text_completion","choices":[{"text":"...","index":0,"logprobs":null,"finish_reason":"stop"}]}
+data: [DONE]</pre>
     </div>
   </div>
 
@@ -655,11 +670,11 @@ if (await waitReady()) {
   <h2>Timing & Polling</h2>
 
   <h3>Model Load Times</h3>
-  <pre>IQ3_XXS (default):  ~2.3 seconds
-REAP-MTP:              ~9.6 seconds
+  <pre>Ultra (IQ3_XXS):  ~2.3 seconds
+Turbo (REAP-MTP):   ~9.6 seconds
 
-Service stop:          ~2 seconds
-Total switch time:     ~4-12 seconds</pre>
+Service stop:        ~2 seconds
+Total switch time:   ~4-12 seconds</pre>
 
   <h3>Health Polling Pattern</h3>
   <pre># Wait for server to be ready (max 30s)
@@ -667,10 +682,10 @@ timeout 30 bash -c 'until curl -s http://localhost:8082/health | grep -q "ok"; d
 echo "Server ready"</pre>
 
   <h3>Switch + Wait Pattern</h3>
-  <pre>llama-server switch qwen3.6-reap
-# Server stops (~2s), symlink updates, then starts loading (~9.6s)
+  <pre>curl -X POST http://localhost:8082/model -d '{"model": "Turbo"}'
+# Proxy switches model (~2s stop + ~9.6s load)
 timeout 60 bash -c 'until curl -s http://localhost:8082/health | grep -q "ok"; do sleep 0.5; done'
-echo "REAP model ready"</pre>
+echo "Turbo model ready"</pre>
 </section>
 
 <section>
@@ -681,7 +696,7 @@ echo "REAP model ready"</pre>
     <tr><td>Server won't start</td><td>Run <code>journalctl --user -u llama-server -e</code> to check logs</td></tr>
     <tr><td>Slow generation</td><td>Check GPU usage: <code>nvidia-smi</code></td></tr>
     <tr><td>OOM errors</td><td>Switch to smaller model or reduce context</td></tr>
-    <tr><td>Switch fails</td><td>Run <code>llama-server switch qwen3.8-27b-iq3</code> to reset</td></tr>
+    <tr><td>Switch fails</td><td>Run <code>curl -X POST http://localhost:8082/model -d '{"model": "Ultra"}'</code> to reset</td></tr>
   </table>
 </section>
 
