@@ -17,10 +17,10 @@
 - **Model:** Unsloth Qwen3.8-27B + mmproj-F16.gguf
 - **Quantization:** IQ3_XXS (~12GB on disk)
 - **Max CTX:** 160K
-- **Speed:** ~31 TPS
+- **Speed:** ~36 TPS (measured)
 - **Vision:** ✅ Multimodal with images
 - **Parameters:** 27B Dense
-- **Runtime:** Stock llama.cpp
+- **Runtime:** Stock llama.cpp (with --reasoning off)
 - **VRAM:** ~15.7GB
 - **Best for:** Complex reasoning, image understanding, code, long documents
 
@@ -28,10 +28,10 @@
 - **Model:** JZC973 Qwen3.6-35B-A3B REAP MTP
 - **Quantization:** Q3_K_M REAP (~13.4GB on disk)
 - **Max CTX:** 160K
-- **Speed:** ~107 TPS (3.4x faster than Ultra)
+- **Speed:** ~118 TPS measured, ~215 TPS @ concurrency 4
 - **Vision:** ❌ Text only
 - **Parameters:** 35B MoE (~27B active)
-- **Runtime:** Stock llama.cpp
+- **Runtime:** Stock llama.cpp (with --reasoning off)
 - **VRAM:** ~14.5GB
 - **Best for:** High-volume inference, fast responses
 
@@ -39,10 +39,10 @@
 
 ## Speed Ranking
 
-| Rank | Model | TPS | CTX | Use Case |
-|------|-------|-----|-----|----------|
-| 🥇 | **Turbo** | ~107 | 160K | Speed-critical tasks |
-| 🥈 | **Ultra** | ~31 | 160K | Quality + vision |
+| Rank | Model | TPS | CTX | Concurrency | Use Case |
+|------|-------|-----|-----|-------------|----------|
+| 🥇 | **Turbo** | ~118 | 160K | ~215 @ 4 | Speed-critical tasks |
+| 🥈 | **Ultra** | ~36 | 160K | - | Quality + vision |
 
 ---
 
@@ -106,8 +106,23 @@ llama-server -m Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf \
 
 ## Key Findings
 
-1. **Turbo is 3.4x faster** - ~107 vs ~31 TPS
+1. **Turbo is 3.3x faster** - ~118 vs ~36 TPS
 2. **Both support 160K CTX** - max context on 16GB VRAM
 3. **Ultra has vision** - only model with multimodal support
 4. **MoE architecture** - Turbo uses fewer active parameters for speed
 5. **IQ3_XXS quality** - good balance of size and capability
+6. **Both pass quality tests** - math, logic, code, factual recall all correct
+7. **10/10 reliability** - no failures in sequential request testing
+
+## Validation Results (Aug 19 2026)
+
+| Test | Ultra | Turbo |
+|------|-------|-------|
+| TPS @ 160K | ~36 | ~118 |
+| Concurrency 4 | - | ~215 |
+| Math (15*23) | ✅ 345 | ✅ 345 |
+| Logic syllogism | ✅ Correct | ✅ Correct |
+| Code generation | ✅ Works | ✅ Works |
+| Factual recall | ✅ Neil Armstrong | ✅ |
+| VRAM | 15.7GB | 14.5GB |
+| Sequential reliability | 10/10 | 10/10 |
