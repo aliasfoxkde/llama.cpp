@@ -17,7 +17,7 @@
 - **Model:** Unsloth Qwen3.8-27B + mmproj-F16.gguf
 - **Quantization:** IQ3_XXS (~12GB on disk)
 - **Max CTX:** 160K
-- **Speed:** ~36 TPS (measured)
+- **Speed:** ~29 TPS (compute-bound, constant regardless of concurrency)
 - **Vision:** ✅ Multimodal with images
 - **Parameters:** 27B Dense
 - **Runtime:** Stock llama.cpp (with --reasoning off)
@@ -28,7 +28,7 @@
 - **Model:** JZC973 Qwen3.6-35B-A3B REAP MTP
 - **Quantization:** Q3_K_M REAP (~13.4GB on disk)
 - **Max CTX:** 160K
-- **Speed:** ~118 TPS single, ~192 TPS @ concurrency 4 (peak 220)
+- **Speed:** ~97 TPS (compute-bound, constant regardless of concurrency)
 - **Vision:** ❌ Text only
 - **Parameters:** 35B MoE (~27B active)
 - **Runtime:** Stock llama.cpp (with --reasoning off)
@@ -39,10 +39,12 @@
 
 ## Speed Ranking
 
-| Rank | Model | TPS | CTX | Concurrency | Use Case |
-|------|-------|-----|-----|-------------|----------|
-| 🥇 | **Turbo** | ~118 | 160K | ~192 @ 4 (peak 220) | Speed-critical tasks |
-| 🥈 | **Ultra** | ~36 | 160K | ~157 @ 4 | Quality + vision |
+| Rank | Model | TPS | CTX | Best For |
+|------|-------|-----|-----|----------|
+| 🥇 | **Turbo** | ~97 | 160K | Speed-critical text tasks |
+| 🥈 | **Ultra** | ~29 | 160K | Quality + vision |
+
+Note: TPS is constant regardless of concurrency. Concurrency scales total throughput (more requests in parallel) but doesn't change per-token speed.
 
 ---
 
@@ -106,28 +108,21 @@ llama-server -m Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf \
 
 ## Key Findings
 
-1. **Turbo is 3.3x faster single-stream** - ~118 vs ~36 TPS
-2. **Concurrency TPS is GPU-limited** - both hit ~267 TPS peak at conc 4
-3. **Both support 160K CTX** - max context on 16GB VRAM
-4. **Ultra has vision** - only model with multimodal support
-5. **MoE architecture** - Turbo uses fewer active parameters for single-stream speed
-6. **IQ3_XXS quality** - good balance of size and capability
-7. **Both pass quality tests** - math, logic, code, factual recall all correct
-8. **10/10 reliability** - no failures in sequential request testing
-
-## Concurrency Scaling
-
-Single-stream TPS differs significantly, but under concurrent load both models reach similar peak throughput (~267 TPS at concurrency 4) because the GPU is the bottleneck.
+1. **Turbo is 3.3x faster** - ~97 vs ~29 TPS single-stream
+2. **Both support 160K CTX** - max context on 16GB VRAM
+3. **Ultra has vision** - only model with multimodal support
+4. **MoE architecture** - Turbo uses fewer active parameters for speed
+5. **IQ3_XXS quality** - good balance of size and capability
+6. **Both pass quality tests** - math, logic, code, factual recall all correct
+7. **10/10 reliability** - no failures in sequential request testing
+8. **Compute-bound** - TPS constant regardless of concurrency
 
 ## Validation Results (Aug 19 2026)
 
 | Test | Ultra | Turbo |
 |------|-------|-------|
-| TPS @ 160K | ~36 | ~118 |
-| Concurrency 2 | ~160 | ~160 |
-| Concurrency 4 | **~267 (peak)** | **~267 (peak)** |
-| Concurrency 6 | ~200 | ~218 |
-| Concurrency 8 | ~246 | ~246 |
+| TPS @ 160K | ~29 | ~97 |
+| C4 Total throughput | ~620 tok/21s | ~580 tok/6s |
 | Math (15*23) | ✅ 345 | ✅ 345 |
 | Logic syllogism | ✅ Correct | ✅ Correct |
 | Code generation | ✅ Works | ✅ Works |
