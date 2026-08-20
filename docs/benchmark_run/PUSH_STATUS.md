@@ -4,13 +4,7 @@
 
 Branch: `feature/apu-benchmarks-2026`
 
-**4 commits to push:**
-```
-6550b9d0c docs: update benchmark docs with Escha SGLang Blackwell findings
-0ed80b1ee docs: add Escha SGLang baseline results for RTX 5060 Ti
-d21d2db02 docs: update results with Escha SGLang baseline
-240de0627 docs: update with Escha SGLang throughput and vLLM blocked findings
-```
+**22 commits to push** (push hangs - likely auth timeout)
 
 ## Authentication Issues
 
