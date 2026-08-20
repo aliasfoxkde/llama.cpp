@@ -1,0 +1,1 @@
+Write a function in Python that implements the FizzBuzz problem.

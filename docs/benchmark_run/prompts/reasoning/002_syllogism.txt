@@ -1,0 +1,1 @@
+Premise 1: No mammals are birds. Premise 2: Some swimmers are mammals. What can we conclude about swimmers and birds?

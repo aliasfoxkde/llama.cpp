@@ -1,0 +1,1 @@
+Solve the quadratic equation x² - 5x + 6 = 0. Find both roots.

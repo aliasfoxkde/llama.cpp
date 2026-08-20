@@ -1,0 +1,1 @@
+Implement a binary search algorithm in Rust that works on a sorted slice of i32 values.

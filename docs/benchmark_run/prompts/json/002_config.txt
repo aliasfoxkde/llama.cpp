@@ -1,0 +1,1 @@
+Create a JSON configuration for a web server with fields: port, host, ssl enabled, and an array of allowed origins.

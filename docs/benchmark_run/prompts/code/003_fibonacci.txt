@@ -1,0 +1,1 @@
+Write a JavaScript function that calculates the Fibonacci sequence up to n terms using iteration.

@@ -1,0 +1,1 @@
+Describe the differences between machine learning and deep learning in a way a non-technical person could understand.

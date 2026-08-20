@@ -1,0 +1,20 @@
+# Software Environment
+
+## llama.cpp
+- Commit: 942900468a902735c0f50f251286921a4529f6be
+- Branch: feature/apu-benchmarks-2026
+
+## CUDA
+- Toolkit Version: 13.3
+- Driver Version: 610.57.04
+- nvcc: V13.3.73
+
+## Compilers
+- GCC: 16.1.1
+- Python: 3.14.6
+
+## OS
+- Fedora 41 (kernel 7.1.8-200.fc44.x86_64)
+
+## CPU
+- 13th Gen Intel Core i5-13600K (14 cores)
