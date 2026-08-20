@@ -12,16 +12,16 @@ Systemd-managed llama.cpp server with model switching proxy running on RTX 5060 
 
 ### Model Specifications
 
-| Property | Ultra | Turbo |
-|----------|--------|--------|
-| **Model** | Qwen3.8-27B + vision | Qwen3.6-35B-A3B MoE |
-| **Quantization** | IQ3_XXS | Q3_K_M REAP-MTP |
-| **Context** | 128K | 128K |
-| **Parameters** | 27B Dense | 35B MoE (~27B active) |
-| **VRAM** | ~15.0GB | ~15.4GB |
-| **Vision** | ✅ Yes | ❌ No |
-| **MTP** | ❌ No | ✅ Yes (n_max=3) |
-| **Single-stream TPS** | ~30 TPS | ~100 TPS |
+| Property | Ultra | Turbo | Distill-9B | Maziyar-8B | Maziyar-0.6B |
+|----------|--------|--------|------------|-------------|---------------|
+| **Model** | Qwen3.8-27B + vision | Qwen3.6-35B-A3B MoE | Qwen3.8-9B distilled | Qwen3-8B | Qwen3-0.6B |
+| **Quantization** | IQ3_XXS | Q3_K_M REAP-MTP | Q4_K_M | Q4_K_M | Q4_K_M |
+| **Context** | 128K | 128K | 128K | 128K | 128K |
+| **Parameters** | 27B Dense | 35B MoE (~27B active) | 9B Dense | 8B Dense | 0.6B Dense |
+| **VRAM** | ~15.0GB | ~15.4GB | ~5.5GB | ~5.0GB | ~0.7GB |
+| **Vision** | ✅ Yes | ❌ No | ❌ No | ❌ No | ❌ No |
+| **MTP** | ❌ No | ✅ Yes (n_max=3) | ❌ No | ❌ No | ❌ No |
+| **Single-stream TPS** | ~30 TPS | ~100 TPS | ~67 TPS | ~79 TPS | ~440 TPS |
 
 ### Model Details
 
@@ -35,6 +35,21 @@ Systemd-managed llama.cpp server with model switching proxy running on RTX 5060 
 - Single-stream: ~100 TPS
 - Architecture: 35B MoE (~27B active)
 - MTP: draft-mtp n_max=3 enabled
+
+**Distill-9B** - empero-ai Qwen3.8-9B distilled GGUF
+- Best for: Medium quality, fast inference
+- Single-stream: ~67 TPS
+- Architecture: 9B Dense
+
+**Maziyar-8B** - MaziyarPanahi Qwen3-8B Q4_K_M
+- Best for: Fast 8B inference
+- Single-stream: ~79 TPS
+- Architecture: 8B Dense
+
+**Maziyar-0.6B** - MaziyarPanahi Qwen3-0.6B Q4_K_M
+- Best for: Very fast, low VRAM (scales with concurrency)
+- Single-stream: ~440 TPS
+- Architecture: 0.6B Dense
 
 ---
 
@@ -138,6 +153,16 @@ curl http://localhost:8082/health
 | 1 | ~30 | ~30 |
 | 4 | ~74 | ~18 |
 | 8 | ~76 | ~9 |
+
+**Maziyar-0.6B @ 128K (Memory-Bound - Scales!):**
+| Concurrency | Total TPS | Per-Session TPS |
+|-------------|-----------|-----------------|
+| 1 | ~408 | ~408 |
+| 2 | ~434 | ~217 |
+| 4 | ~441 | ~110 |
+| 8 | ~442 | ~55 |
+
+**Key Finding:** Maziyar-0.6B is memory-bound and throughput SCALES with concurrency (unique behavior).
 
 ---
 

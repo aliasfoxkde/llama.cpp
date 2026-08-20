@@ -354,7 +354,7 @@
       <span>Model: <strong id="currentModel">—</strong></span>
     </div>
     <div class="status-item">
-      <span>Context: <strong>160K</strong></span>
+      <span>Context: <strong>128K</strong></span>
     </div>
   </div>
 </header>
@@ -378,7 +378,7 @@
       <div class="label">Single-Stream TPS</div>
     </div>
     <div class="timing-card">
-      <div class="value">160K</div>
+      <div class="value">128K</div>
       <div class="label">Max Context</div>
     </div>
   </div>
@@ -407,21 +407,43 @@
         <td>Qwen3.8-27B UD-IQ3_XXS + vision</td>
         <td>12GB</td>
         <td>~2.3s</td>
-        <td>Quality + multimodal, 160K ctx</td>
+        <td>Quality + multimodal, 128K ctx</td>
       </tr>
       <tr>
         <td><code>Turbo</code></td>
         <td>Qwen3.6-35B REAP-MTP</td>
-        <td>13GB</td>
+        <td>15.4GB</td>
         <td>~9.6s</td>
-        <td>Speed (~107 TPS), 160K ctx</td>
+        <td>Speed (~100 TPS), 128K ctx</td>
+      </tr>
+      <tr>
+        <td><code>Distill-9B</code></td>
+        <td>empero-ai Qwen3.8-9B Q4_K_M</td>
+        <td>5.5GB</td>
+        <td>~3s</td>
+        <td>Medium quality, ~67 TPS, 128K ctx</td>
+      </tr>
+      <tr>
+        <td><code>Maziyar-8B</code></td>
+        <td>MaziyarPanahi Qwen3-8B Q4_K_M</td>
+        <td>5.0GB</td>
+        <td>~2s</td>
+        <td>Fast 8B, ~79 TPS, 128K ctx</td>
+      </tr>
+      <tr>
+        <td><code>Maziyar-0.6B</code></td>
+        <td>MaziyarPanahi Qwen3-0.6B Q4_K_M</td>
+        <td>0.7GB</td>
+        <td>~1s</td>
+        <td>Very fast, ~440 TPS (scales!), 128K ctx</td>
       </tr>
     </tbody>
   </table>
 
   <h3>Switching Models</h3>
   <pre>curl -X POST http://localhost:8082/model -d '{"model": "Turbo"}'  # Switch to Turbo
-curl -X POST http://localhost:8082/model -d '{"model": "Ultra"}'  # Switch to Ultra</pre>
+curl -X POST http://localhost:8082/model -d '{"model": "Ultra"}'  # Switch to Ultra
+curl -X POST http://localhost:8082/model -d '{"model": "Distill-9B"}'  # Switch to Distill-9B</pre>
 </section>
 
 <section>
