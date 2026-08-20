@@ -30,7 +30,7 @@ THINK=0
 bash /tmp/escha-runtime/sglang/serve.sh
 ```
 
-### Baseline (Single User, 31 tok/s)
+### Baseline (Single User)
 | Context | tok/s |
 |---------|-------|
 | 8K | 31.3 |
@@ -45,12 +45,24 @@ bash /tmp/escha-runtime/sglang/serve.sh
 | 8 | 187 |
 | 16 | 299 |
 
-### Context Sweep (TO DO)
-- 24K, 32K, 48K, 64K
-
 ### DFlash2 Status
-- lued/Qwen3.8-27B-DFlash2-W8 is for **vLLM only**, NOT SGLang
-- Escha SGLang fork does not support DFlash2
+- **Escha SGLang does NOT support DFlash2**
+- Available speculative algorithms: EAGLE, EAGLE3, NEXTN, STANDALONE, NGRAM
+- DFlash2 requires different SGLang configuration
+- lued DFlash2-W8 is for vLLM, not SGLang
+
+### Context Sweep (DONE)
+| Context | tok/s | Notes |
+|---------|-------|-------|
+| 4K | 31.3 | |
+| 8K | 31.3 | |
+| 16K | 31.1 | baseline |
+| 24K | 31.1 | |
+| 32K | 31.2 | |
+| 48K | 30.9 | MEM=0.80 |
+| 64K | 30.4 | no graphs, MEM=0.78 |
+
+**Decode is compute-bound (not memory-bound): constant ~31 tok/s regardless of context length.**
 
 ### Workload Matrix (TO DO)
 - Code, Math, Reasoning, Prose, JSON
@@ -59,5 +71,9 @@ bash /tmp/escha-runtime/sglang/serve.sh
 
 ---
 
+## Phase 3-6: vLLM [TO DO]
+
+---
+
 ## Push Status
-4 commits ready, push blocked by GitHub auth.
+5 commits ready, push blocked by GitHub auth.

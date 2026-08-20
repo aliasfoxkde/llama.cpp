@@ -84,23 +84,42 @@ bash /tmp/escha-runtime/sglang/serve.sh
 | 8 | 187 |
 | 16 | **299** |
 
+### Context Sweep Results
+
+| Context | tok/s | Notes |
+|---------|-------|-------|
+| 4K | 31.3 | |
+| 8K | 31.3 | |
+| 16K | 31.1 | baseline |
+| 24K | 31.1 | |
+| 32K | 31.2 | |
+| 48K | 30.9 | MEM=0.80 |
+| 64K | 30.4 | no graphs, MEM=0.78 |
+
+**Decode is compute-bound**: constant ~31 tok/s regardless of context length. This is a GPU compute ceiling, not memory bandwidth.
+
 ### Notes
 - VENV must point to cp312 venv (not system Python 3.14)
 - ATTN_BACKEND=triton required on Blackwell
-- 16GB config works at 32K context too
+- 64K requires MEM=0.78 and GRAPHS=0 (CUDA graph capture fails)
+- THINK=1 produces `<think>` blocks in output (Qwen3 native behavior)
 
 ---
 
-## Phase 6: vLLM [BLOCKED]
+## Phase 6: vLLM DFlash2 [NOT COMPATIBLE]
 
 ### Issue
 - vLLM does not support `escha` quantization method
 - Error: `Unknown quantization method: escha`
 - vLLM only supports: awq, fp8, gptq, compressed-tensors, bitsandbytes, etc.
 
-### lued DFlash2 W8A16
-- Specifically designed for vLLM with PR 52816
-- Not compatible with SGLang escha fork
+### lued DFlash2 W8A16 (club-3090)
+- Requires **dual 24GB GPUs** (RTX 3090/4090/5090) — NOT compatible with RTX 5060 Ti 16GB
+- Model size: 28GB (INT8-W8A16)
+- Requires vLLM with club-3090 patch set (PR 52816)
+- club-3090 is a Docker-based multi-engine serving system for 3090/4090/5090 cards
+
+**vLLM + DFlash2 is not viable on RTX 5060 Ti 16GB**
 
 ---
 
