@@ -20,11 +20,36 @@ PROXY_PORT = 8082
 DOCS_PATH = "/home/mkinney/.llama-server/docs"
 
 MODEL_ALIASES = {
-    "Qwen3.8-27B": "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf",
-    "Qwen3.6-35B-A3B-REAP-MTP": "/home/mkinney/Models/JZC973/Qwen3.6-35B-REAP-MTP-UD-GGUF-Collection/Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf",
+    "Ultra": {
+        "path": "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf",
+        "slug": "ultra",
+        "display_name": "Qwen3.8-27B Ultra",
+        "description": "Qwen3 8B Instruct model, IQ3_XXS quantization",
+    },
+    "Turbo": {
+        "path": "/home/mkinney/Models/JZC973/Qwen3.6-35B-REAP-MTP-UD-GGUF-Collection/Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf",
+        "slug": "turbo",
+        "display_name": "Qwen3.6-35B Turbo",
+        "description": "Qwen3 35B REAP-MTP model, Q3_K_M quantization",
+    },
+    "Lite": {
+        "path": "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf",
+        "slug": "lite",
+        "display_name": "Qwen3.8-27B Lite",
+        "description": "Same as Ultra, configured for lower resource usage",
+    },
 }
 
-current_model = os.environ.get("CURRENT_MODEL", "Qwen3.8-27B")
+# Map Codex model names to internal aliases
+MODEL_SLUGS = {
+    "ultra": "Ultra",
+    "turbo": "Turbo",
+    "lite": "Lite",
+    "qwen3.8-27b": "Ultra",
+    "qwen3.6-35b": "Turbo",
+}
+
+current_model = os.environ.get("CURRENT_MODEL", "Ultra")
 model_lock = threading.Lock()
 server_process = None
 
@@ -33,6 +58,16 @@ def start_llama_server(model_path):
     """Start or restart llama-server with the given model."""
     global server_process
 
+    # Check if llama-server is already running on our port
+    import urllib.request
+    try:
+        urllib.request.urlopen(f"http://{LLAMA_HOST}:{LLAMA_PORT}/health", timeout=1)
+        print(f"llama-server already running on port {LLAMA_PORT}")
+        return True
+    except:
+        pass
+
+    # Not running, start it
     subprocess.run(["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL)
     time.sleep(2)
 
@@ -71,7 +106,8 @@ def switch_model(alias):
     if alias not in MODEL_ALIASES:
         return False, f"Unknown model: {alias}. Available: {', '.join(MODEL_ALIASES.keys())}"
 
-    model_path = MODEL_ALIASES[alias]
+    model_info = MODEL_ALIASES[alias]
+    model_path = model_info["path"]
     if not os.path.exists(model_path):
         return False, f"Model file not found: {model_path}"
 
@@ -80,6 +116,44 @@ def switch_model(alias):
     if success:
         return True, f"Switched to {alias}"
     return False, "Failed to start server"
+
+
+def resolve_model(model_name):
+    """Resolve a model name (Ultra/Turbo/Lite or slug) to internal alias."""
+    if model_name in MODEL_ALIASES:
+        return model_name
+    # Try slug mapping (case-insensitive)
+    for slug, alias in MODEL_SLUGS.items():
+        if model_name.lower() == slug:
+            return alias
+    return model_name  # Return as-is if not found
+
+
+def normalize_message_order(messages):
+    """
+    Reorder messages so system/developer content comes first, before any user messages.
+    This is required because llama.cpp rejects system messages after user content.
+    """
+    if not messages:
+        return messages
+
+    system = []
+    developer = []
+    others = []
+
+    for msg in messages:
+        role = msg.get("role", "").lower()
+        content_type = msg.get("content", {}).get("type", "text") if isinstance(msg.get("content"), dict) else "text"
+
+        if role == "system":
+            system.append(msg)
+        elif role == "developer":
+            developer.append(msg)
+        else:
+            others.append(msg)
+
+    # Return in order: system, developer, then everything else (preserving internal order)
+    return system + developer + others
 
 
 def send_file(path):
@@ -108,9 +182,20 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.send_error(404)
             return
 
-        if path == "/models":
-            models = [{"id": alias, "object": "model", "owned_by": "local", "permission": []} for alias in MODEL_ALIASES]
-            response = json.dumps({"object": "list", "data": models}).encode()
+        if path == "/models" or path == "/v1/models":
+            # Codex-compatible response with slug and metadata
+            models = []
+            for alias, info in MODEL_ALIASES.items():
+                models.append({
+                    "id": alias,
+                    "slug": info["slug"],
+                    "object": "model",
+                    "owned_by": "local",
+                    "permission": [],
+                    "display_name": info["display_name"],
+                    "description": info["description"],
+                })
+            response = json.dumps({"object": "list", "models": models}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", len(response))
@@ -119,12 +204,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return
 
         if path.rstrip("/") == "/model":
+            info = MODEL_ALIASES.get(current_model, {})
             response = {
                 "id": current_model,
+                "slug": info.get("slug", ""),
                 "object": "model",
                 "owned_by": "local",
                 "permission": [],
-                "path": MODEL_ALIASES.get(current_model, ""),
+                "path": info.get("path", ""),
+                "display_name": info.get("display_name", ""),
+                "description": info.get("description", ""),
                 "available": list(MODEL_ALIASES.keys())
             }
             content = json.dumps(response).encode()
@@ -154,11 +243,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 with model_lock:
                     success, msg = switch_model(alias)
                     if success:
+                        info = MODEL_ALIASES.get(alias, {})
                         response = json.dumps({
                             "id": alias,
                             "object": "model",
                             "owned_by": "local",
-                            "path": MODEL_ALIASES.get(alias, ""),
+                            "path": info.get("path", ""),
                         }).encode()
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
@@ -167,6 +257,28 @@ class ProxyHandler(BaseHTTPRequestHandler):
                         self.wfile.write(response)
                     else:
                         self.send_error(400, msg)
+            except Exception as e:
+                self.send_error(400, str(e))
+            return
+
+        if path == "/v1/responses":
+            # Convert Codex Responses API to llama-server format
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode()
+            try:
+                data = json.loads(body)
+
+                # Codex sends "messages" array, llama-server expects "input" array of objects
+                if "messages" in data:
+                    data["input"] = normalize_message_order(data["messages"])
+                    del data["messages"]
+
+                # Resolve model name
+                if "model" in data:
+                    data["model"] = resolve_model(data["model"])
+
+                body = json.dumps(data).encode()
+                self.proxy_request_with_body("POST", path, body)
             except Exception as e:
                 self.send_error(400, str(e))
             return
@@ -202,9 +314,34 @@ class ProxyHandler(BaseHTTPRequestHandler):
         except urllib.error.URLError as e:
             self.send_error(502, str(e))
 
+    def proxy_request_with_body(self, method, path, body):
+        """Forward request to llama-server with pre-serialized body."""
+        import urllib.request
+        import urllib.error
+
+        url = f"http://{LLAMA_HOST}:{LLAMA_PORT}{path}"
+
+        headers = {}
+        for k, v in self.headers.items():
+            if k.lower() not in ("host", "connection", "content-length"):
+                headers[k] = v
+
+        try:
+            req = urllib.request.Request(url, data=body, headers=headers, method=method)
+            resp = urllib.request.urlopen(req, timeout=300)
+
+            self.send_response(resp.status)
+            for k, v in resp.headers.items():
+                if k.lower() not in ("transfer-encoding", "connection"):
+                    self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(resp.read())
+        except urllib.error.URLError as e:
+            self.send_error(502, str(e))
+
 
 def main():
-    start_llama_server(MODEL_ALIASES[current_model])
+    start_llama_server(MODEL_ALIASES[current_model]["path"])
 
     server = HTTPServer(("0.0.0.0", PROXY_PORT), ProxyHandler)
     print(f"Proxy running on port {PROXY_PORT}")
