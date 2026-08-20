@@ -1,34 +1,29 @@
-# Phase 2 Results: Escha SGLang
+# Phase 2: Escha SGLang Results
 
-## Attempted: Escha Runtime (SGLang Fork) with Escha W2 Model
+## Status: BLOCKED - Blackwell Architecture Compatibility
 
-### Result: PARTIALLY WORKING - Installation Complex
-
-The Escha runtime requires:
-1. Python 3.12 with specific dependencies
-2. Custom Escha wheel (`escha-1.1.0+qwen3dense-cp312-cp312-manylinux_2_28_x86_64.whl`)
-3. Proper setup via `serve.sh`
-
-### What Worked
-- Successfully installed Escha wheel in Python 3.12 venv
-- Model weights loaded (safetensors)
-- Server started initializing
-
-### Issue
-- Server crashed during model initialization
-- Possible OOM or Blackwell architecture compatibility issue
-
-### Error Observed
-The server loaded the escha shards but crashed before becoming ready. The log showed:
+### Error
 ```
-Loaded 1 escha shards (ref_gemm: NO, multi: YES, prefill: fused, ref-free: YES)
+AssertionError: capture_bs=[0]
 ```
-repeated many times, then process terminated.
+CUDA graph capture fails on Blackwell (sm_120) GPU.
 
-### Documentation
-- Escha model: `/home/mkinney/Models/EschaLabs/Qwen3.8-27B-Escha-W2/`
-- Model size: ~10.15GB (2-bit quantization)
-- Requires: RTX 50-series support (sm_120)
+### Details
+- Model: EschaLabs/Qwen3.8-27B-Escha-W2 (10.15GB, 2-bit escha quantization)
+- Runtime: escha-runtime-qwen3dense (custom SGLang fork)
+- Required flags discovered: `--attention-backend triton`
+- Model loads successfully but fails during CUDA graph capture initialization
+- This is a Blackwell-specific kernel compatibility issue
 
-### Decision
-**Deferred** - Requires further debugging of Blackwell/sm_120 compatibility.
+### Workaround Attempts
+1. Tried various --mem-fraction-static values (0.95, 0.90, 0.85)
+2. Tried --disable-cuda-graph flag
+3. Tried --attention-backend triton
+
+### Conclusion
+**Escha SGLang is not compatible with RTX 5060 Ti (Blackwell sm_120)** at this time.
+The escha runtime requires CUDA graph support that is broken on Blackwell architecture.
+
+### Models Available
+- Escha W2: 10.15GB safetensors (2-bit escha quantization)
+- lued W8A16 DFlash2: 2.02GB safetensors (for vLLM)
