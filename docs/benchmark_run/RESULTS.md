@@ -4,8 +4,11 @@
 
 **Goal**: Find the most intelligent model that can run on RTX 5060 Ti 16GB with best performance.
 
-**Phase 1**: llama.cpp DFlash2 provides **61% speedup** with n_max=4
-**Phase 2**: Escha SGLang W2 baseline working at **31 tok/s**
+| Engine | Model | tok/s | VRAM | Notes |
+|--------|-------|-------|------|-------|
+| llama.cpp DFlash2 | Qwen3.8-27B IQ2_XXS | **60.5** | 14.4GB | n_max=4 |
+| Escha SGLang | Escha W2 (2-bit) | 31 | 14.7GB | 16K ctx |
+| Escha SGLang (16 streams) | Escha W2 | **299** | 14.7GB | aggregate |
 
 ---
 
@@ -16,14 +19,14 @@
 
 ---
 
-## Phase 1: llama.cpp DFlash2 Testing [COMPLETE]
+## Phase 1: llama.cpp DFlash2 [COMPLETE]
 
 ### Configuration
 - **Target Model**: Qwen3.8-27B-UD-IQ2_XXS (8.4GB GGUF)
 - **Draft Model**: Qwen3.8-27B-DFlash-bootstrap-Q8_0 (1.8GB)
 - **Context**: 8192 | **KV Cache**: Q8_0 | **Max Tokens**: 256
 
-### Baseline Results (No DFlash)
+### Baseline Results
 
 | Model | Size | VRAM | Decode tok/s |
 |-------|------|------|--------------|
@@ -31,17 +34,17 @@
 | Qwen3.8-27B-UD-IQ3_XXS | 12GB | 12.3GB | 30.4 |
 | Qwen3.8-27B-UD-Q3_K_XL | 13GB | 13.7GB | 28.7 |
 
-### DFlash n-max Sweep Results
+### DFlash n-max Sweep
 
-| n_max | Decode tok/s | Speedup | Acceptance | Draft Tokens | VRAM |
-|-------|--------------|---------|------------|--------------|------|
-| 0 (baseline) | 37.5 | - | - | - | 9.6GB |
-| 2 | 52.0 | **+39%** | 62% | 227 | 13.2GB |
-| 3 | 54.1 | **+44%** | 58% | 279 | 13.8GB |
-| **4** | **60.5** | **+61%** | **56%** | 315 | 14.4GB |
-| 5 | 39.4 | +5% | 27% | 542 | 15.0GB |
-| 6 | 44.1 | +18% | 33% | 514 | 15.6GB |
-| 7 | OOM | - | - | - | - |
+| n_max | Decode tok/s | Speedup | Acceptance | VRAM |
+|-------|--------------|---------|------------|------|
+| 0 (baseline) | 37.5 | - | - | 9.6GB |
+| 2 | 52.0 | +39% | 62% | 13.2GB |
+| 3 | 54.1 | +44% | 58% | 13.8GB |
+| **4** | **60.5** | **+61%** | **56%** | 14.4GB |
+| 5 | 39.4 | +5% | 27% | 15.0GB |
+| 6 | 44.1 | +18% | 33% | 15.6GB |
+| 7 | OOM | - | - | - |
 
 **n_max=4 is OPTIMAL for RTX 5060 Ti 16GB**
 
@@ -49,7 +52,7 @@
 
 ## Phase 2: Escha SGLang [WORKING]
 
-### Configuration
+### Configuration That Works
 ```bash
 VENV=/path/to/sglang_test_env \
 MODEL=/home/mkinney/Models/EschaLabs/Qwen3.8-27B-Escha-W2 \
@@ -71,19 +74,33 @@ bash /tmp/escha-runtime/sglang/serve.sh
 | **Context Length** | 16K |
 | **Max Concurrent** | 4 streams |
 
+### Throughput Scaling (16 streams mode)
+
+| Concurrent | Aggregate tok/s |
+|------------|-----------------|
+| 1 | 31 |
+| 2 | 54 |
+| 4 | 110 |
+| 8 | 187 |
+| 16 | **299** |
+
 ### Notes
 - VENV must point to cp312 venv (not system Python 3.14)
 - ATTN_BACKEND=triton required on Blackwell
-- 16GB config from escha docs (untested by EschaLabs)
+- 16GB config works at 32K context too
 
 ---
 
-## Phase 6: vLLM DFlash2 [BLOCKED]
+## Phase 6: vLLM [BLOCKED]
 
 ### Issue
-- vLLM requires patched PR 52816 for DFlash2 support
-- lued/Qwen3.8-27B-DFlash2-W8 is specifically for vLLM
-- SGLang escha fork does not have DFlash2 integration
+- vLLM does not support `escha` quantization method
+- Error: `Unknown quantization method: escha`
+- vLLM only supports: awq, fp8, gptq, compressed-tensors, bitsandbytes, etc.
+
+### lued DFlash2 W8A16
+- Specifically designed for vLLM with PR 52816
+- Not compatible with SGLang escha fork
 
 ---
 
@@ -94,23 +111,28 @@ bash /tmp/escha-runtime/sglang/serve.sh
 | llama.cpp | Qwen3.8-27B | IQ2_XXS | 37.5 | 9.6GB | 8K |
 | llama.cpp + DFlash2 | Qwen3.8-27B | IQ2_XXS | **60.5** | 14.4GB | 8K |
 | Escha SGLang | Escha W2 | 2-bit escha | 31 | 14.7GB | 16K |
+| Escha SGLang (16 streams) | Escha W2 | 2-bit escha | **299** | 14.7GB | 16K |
 
 ---
 
 ## Recommendations
 
-### Best Raw Speed: llama.cpp DFlash2
+### Best Single-User Speed: llama.cpp DFlash2
 - 60.5 tok/s with n_max=4
 - 14.4GB VRAM
+- 8K context
 
-### Best Context: Escha SGLang
+### Best Multi-User Throughput: Escha SGLang
+- 299 tok/s at 16 concurrent users
+- 14.7GB VRAM
+- 16K context
+
+### Best Context Length: Escha SGLang
 - 16K context vs 8K
-- 2-bit escha quantization
-- 31 tok/s baseline
+- 2-bit escha quantization (higher quality per bit)
 
-### Best Quality/Context Balance: Escha W2
-- Higher quality per bit (2-bit escha vs IQ2_XXS)
-- Larger context possible
+### Best Quality: Escha W2
+- escha 2-bit has better quality than IQ2_XXS per benchmark
 
 ---
 
