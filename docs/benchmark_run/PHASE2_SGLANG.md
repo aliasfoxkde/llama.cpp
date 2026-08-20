@@ -1,29 +1,48 @@
 # Phase 2: Escha SGLang Results
 
-## Status: BLOCKED - Blackwell Architecture Compatibility
+## Status: ✅ WORKING on RTX 5060 Ti 16GB Blackwell
 
-### Error
+### Configuration That Works
+```bash
+VENV=/home/mkinney/Repos/llama.cpp/sglang_test_env \
+MODEL=/home/mkinney/Models/EschaLabs/Qwen3.8-27B-Escha-W2 \
+ATTN_BACKEND=triton \
+MEM=0.90 \
+CTXLEN=16384 \
+CUDA_GRAPH_BS="1 2 4 8" \
+GRAPHS=1 \
+THINK=1 \
+PORT=30000 \
+HOST=0.0.0.0 \
+bash /tmp/escha-runtime/sglang/serve.sh
 ```
-AssertionError: capture_bs=[0]
-```
-CUDA graph capture fails on Blackwell (sm_120) GPU.
 
-### Details
-- Model: EschaLabs/Qwen3.8-27B-Escha-W2 (10.15GB, 2-bit escha quantization)
-- Runtime: escha-runtime-qwen3dense (custom SGLang fork)
-- Required flags discovered: `--attention-backend triton`
-- Model loads successfully but fails during CUDA graph capture initialization
-- This is a Blackwell-specific kernel compatibility issue
+### Key Success Factors
+1. **VENV must point to clean cp312 venv** - system Python 3.14 causes module errors
+2. **ATTN_BACKEND=triton** - required on Blackwell (sm_120)
+3. **MEM=0.90, CTXLEN=16384** - conservative settings for 16GB
+4. **CUDA_GRAPH_BS="1 2 4 8"** - small batch sizes for CUDA graph capture
+5. **PyTorch 2.9+cu128** - required version
 
-### Workaround Attempts
-1. Tried various --mem-fraction-static values (0.95, 0.90, 0.85)
-2. Tried --disable-cuda-graph flag
-3. Tried --attention-backend triton
+### Baseline Results (Escha W2)
 
-### Conclusion
-**Escha SGLang is not compatible with RTX 5060 Ti (Blackwell sm_120)** at this time.
-The escha runtime requires CUDA graph support that is broken on Blackwell architecture.
+| Metric | Value |
+|--------|-------|
+| **Decode Speed** | 31 tok/s |
+| **VRAM Used** | 14.7 GB / 16 GB |
+| **Context Length** | 16K |
+| **Max Concurrent** | 4 streams |
 
-### Models Available
-- Escha W2: 10.15GB safetensors (2-bit escha quantization)
-- lued W8A16 DFlash2: 2.02GB safetensors (for vLLM)
+### Comparison to llama.cpp
+
+| Engine | Model | tok/s | VRAM |
+|--------|-------|-------|------|
+| llama.cpp DFlash2 n=4 | IQ2_XXS | 60.5 | 14.4GB |
+| Escha SGLang | W2 (2-bit) | 31 | 14.7GB |
+
+Note: Escha W2 is a different quantization (escha 2-bit) vs IQ2_XXS. Quality should be better.
+
+### Next Steps
+1. Test Escha with DFlash2 drafter
+2. Test TurboQuant KV
+3. Test combined Escha + TurboQuant + DFlash2
