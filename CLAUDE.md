@@ -1,1 +1,5 @@
-IMPORTANT: Ensure you’ve thoroughly reviewed the [AGENTS.md](AGENTS.md) file before beginning any work.
+# llama.cpp project instructions
+
+The canonical project instructions are in [AGENTS.md](AGENTS.md).
+
+@AGENTS.md
