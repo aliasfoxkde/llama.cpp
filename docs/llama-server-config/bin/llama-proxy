@@ -670,13 +670,25 @@ class ProxyHandler(BaseHTTPRequestHandler):
             print(f"[DEBUG] Trace: {traceback.format_exc()}")
 
 
+def build_server(address=None, handler=None):
+    """Single construction point for the proxy's HTTP server.
+
+    main() and the regression tests both go through this seam, so tests
+    exercise the same server class and configuration production uses.
+    """
+    return ThreadingHTTPServer(
+        address if address is not None else ("0.0.0.0", PROXY_PORT),
+        handler if handler is not None else ProxyHandler,
+    )
+
+
 def main():
     start_llama_server(
         MODEL_ALIASES[current_model]["path"],
         mmproj_path=MODEL_ALIASES[current_model].get("mmproj"),
     )
 
-    server = ThreadingHTTPServer(("0.0.0.0", PROXY_PORT), ProxyHandler)
+    server = build_server(("0.0.0.0", PROXY_PORT), ProxyHandler)
     print(f"Proxy running on port {PROXY_PORT}")
     print(f"  /           - API docs")
     print(f"  /models     - List models")
