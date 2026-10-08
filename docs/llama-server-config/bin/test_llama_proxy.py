@@ -5,21 +5,23 @@ Covers the resilience bug where clients that open a connection and never
 finish sending request headers pinned a handler thread forever, wedging the
 proxy. Also proves the timeout is per-operation, not an overall stream
 deadline: an SSE response with a silent upstream gap longer than the timeout
-still completes.
+still completes. Also covers model-list metadata: advertised image input
+requires the configured mmproj path to exist as a file.
 
 Run: python3 test_llama_proxy.py
 """
 
+import http.client
 import importlib.machinery
 import importlib.util
 import json
 import os
 import socket
 import sys
+import tempfile
 import threading
 import time
 import unittest
-import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PROXY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "llama-proxy")
@@ -99,11 +101,14 @@ class SocketTimeoutTest(unittest.TestCase):
         stalled.sendall(b"GET /health HTTP/1.1\r\nHost: localhost\r\n")
 
         # A second client must be served while the first is still stalled.
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{self.port}/health", timeout=5
-        ) as resp:
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.request("GET", "/health")
+            resp = conn.getresponse()
             self.assertEqual(resp.status, 200)
             self.assertEqual(json.loads(resp.read())["status"], "ok")
+        finally:
+            conn.close()
 
         # The stalled connection must be closed by the server within the limit.
         stalled.settimeout(CLOSE_LIMIT)
@@ -152,6 +157,32 @@ class SocketTimeoutTest(unittest.TestCase):
         # The silent gap between chunks exceeded the socket timeout; the
         # connection must survive it (timeout is per-operation, not a deadline).
         self.assertGreaterEqual(t_end - t_hello, UPSTREAM_CHUNK_DELAY - 0.3)
+
+    def test_mmproj_metadata_requires_existing_file(self):
+        def fetch_models(path):
+            conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+            try:
+                conn.request("GET", path)
+                resp = conn.getresponse()
+                self.assertEqual(resp.status, 200)
+                return json.loads(resp.read())["models"]
+            finally:
+                conn.close()
+
+        original = proxy.MODEL_ALIASES["Ultra"]
+        try:
+            proxy.MODEL_ALIASES["Ultra"] = dict(
+                original, mmproj="/nonexistent/mmproj-F16.gguf"
+            )
+            ultra = next(m for m in fetch_models("/v1/models") if m["id"] == "Ultra")
+            self.assertEqual(ultra["input_modalities"], ["text"])
+
+            with tempfile.NamedTemporaryFile(suffix=".gguf") as mmproj:
+                proxy.MODEL_ALIASES["Ultra"]["mmproj"] = mmproj.name
+                ultra = next(m for m in fetch_models("/models") if m["id"] == "Ultra")
+                self.assertEqual(ultra["input_modalities"], ["text", "image"])
+        finally:
+            proxy.MODEL_ALIASES["Ultra"] = original
 
 
 if __name__ == "__main__":

@@ -56,6 +56,11 @@ model_lock = threading.Lock()
 server_process = None
 
 
+def has_vision(model_info):
+    """Vision support only when the configured mmproj exists as a file."""
+    return os.path.isfile(model_info.get("mmproj", ""))
+
+
 def start_llama_server(model_path, force_restart=False, mmproj_path=None):
     """Start or restart llama-server with the given model."""
     global server_process
@@ -93,8 +98,15 @@ def start_llama_server(model_path, force_restart=False, mmproj_path=None):
         "--port", str(LLAMA_PORT),
     ]
 
-    if mmproj_path and os.path.isfile(mmproj_path):
-        cmd.extend(["--mmproj", mmproj_path])
+    if mmproj_path:
+        if os.path.isfile(mmproj_path):
+            cmd.extend(["--mmproj", mmproj_path])
+        else:
+            print(
+                f"WARNING: mmproj file not found: {mmproj_path}; "
+                "starting text-only",
+                file=sys.stderr,
+            )
 
     server_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -251,7 +263,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     ],
                     "context_window": 131072,
                     "default_reasoning_level": {"effort": "medium"},
-                    "input_modalities": ["text", "image"] if info.get("mmproj") else ["text"],
+                    "input_modalities": ["text", "image"] if has_vision(info) else ["text"],
                     "supports_parallel_tool_calls": False,
                     "supports_reasoning_summaries": False,
                 })
