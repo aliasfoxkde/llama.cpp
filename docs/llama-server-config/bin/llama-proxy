@@ -18,13 +18,15 @@ LLAMA_HOST = "localhost"
 LLAMA_PORT = 8080
 PROXY_PORT = 8082
 DOCS_PATH = "/home/mkinney/.llama-server/docs"
+SOCKET_TIMEOUT = float(os.environ.get("LLAMA_PROXY_SOCKET_TIMEOUT", "15"))
 
 MODEL_ALIASES = {
     "Ultra": {
         "path": "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf",
+        "mmproj": "/home/mkinney/Models/unsloth/Qwen3.8-27B-GGUF/mmproj-F16.gguf",
         "slug": "ultra",
         "display_name": "Qwen3.8-27B Ultra",
-        "description": "Qwen3 8B Instruct model, IQ3_XXS quantization",
+        "description": "Qwen3.8-27B dense model, IQ3_XXS quantization; vision projector available",
     },
     "Turbo": {
         "path": "/home/mkinney/Models/JZC973/Qwen3.6-35B-REAP-MTP-UD-GGUF-Collection/Qwen3.6-35B-A3B-UD-Q3_K_M-REAP.gguf",
@@ -36,7 +38,7 @@ MODEL_ALIASES = {
         "path": "/home/mkinney/Models/empero-ai/Qwen3.8-2B-Q4_K_M.gguf",
         "slug": "lite",
         "display_name": "Qwen3.8-27B Lite",
-        "description": "Same as Ultra, configured for lower resource usage",
+        "description": "Qwen3.8-2B Q4_K_M model, configured for lower resource usage",
     },
 }
 
@@ -54,7 +56,7 @@ model_lock = threading.Lock()
 server_process = None
 
 
-def start_llama_server(model_path, force_restart=False):
+def start_llama_server(model_path, force_restart=False, mmproj_path=None):
     """Start or restart llama-server with the given model."""
     global server_process
 
@@ -91,6 +93,9 @@ def start_llama_server(model_path, force_restart=False):
         "--port", str(LLAMA_PORT),
     ]
 
+    if mmproj_path and os.path.isfile(mmproj_path):
+        cmd.extend(["--mmproj", mmproj_path])
+
     server_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     import urllib.request
@@ -115,7 +120,11 @@ def switch_model(alias):
     if not os.path.exists(model_path):
         return False, f"Model file not found: {model_path}"
 
-    success = start_llama_server(model_path, force_restart=(alias != current_model))
+    success = start_llama_server(
+        model_path,
+        force_restart=(alias != current_model),
+        mmproj_path=model_info.get("mmproj"),
+    )
     if success:
         current_model = alias
         return True, f"Switched to {alias}"
@@ -190,6 +199,11 @@ def send_file(path):
 
 
 class ProxyHandler(BaseHTTPRequestHandler):
+    # Per-socket-operation timeout: stalled clients (partial headers, dead
+    # peers) are dropped instead of pinning a thread. Long streams are
+    # unaffected because no read is pending while awaiting upstream chunks.
+    timeout = SOCKET_TIMEOUT
+
     def log_message(self, format, *args):
         pass
 
@@ -237,7 +251,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     ],
                     "context_window": 131072,
                     "default_reasoning_level": {"effort": "medium"},
-                    "input_modalities": ["text"],
+                    "input_modalities": ["text", "image"] if info.get("mmproj") else ["text"],
                     "supports_parallel_tool_calls": False,
                     "supports_reasoning_summaries": False,
                 })
@@ -260,6 +274,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 "path": info.get("path", ""),
                 "display_name": info.get("display_name", ""),
                 "description": info.get("description", ""),
+                "input_modalities": ["text", "image"] if info.get("mmproj") else ["text"],
                 "available": list(MODEL_ALIASES.keys())
             }
             content = json.dumps(response).encode()
@@ -644,7 +659,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    start_llama_server(MODEL_ALIASES[current_model]["path"])
+    start_llama_server(
+        MODEL_ALIASES[current_model]["path"],
+        mmproj_path=MODEL_ALIASES[current_model].get("mmproj"),
+    )
 
     server = ThreadingHTTPServer(("0.0.0.0", PROXY_PORT), ProxyHandler)
     print(f"Proxy running on port {PROXY_PORT}")
