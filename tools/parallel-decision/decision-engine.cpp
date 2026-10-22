@@ -738,6 +738,17 @@ common_json assemble(const compiled_schema & cs, const result & r) {
         decision[sp.name] = sp.values[idx];
         f["value"]        = sp.values[idx];
         f["probability"]  = (double) (fr.probs.size() == sp.values.size() ? fr.probs[idx] : fr.path_score);
+        if (fr.probs.size() == sp.values.size()) {
+            // Full per-choice distribution (post-softmax path scores). The
+            // calibrated-probability work downstream (native Brier/ECE) needs
+            // every choice's probability, not just the winner's; consumers
+            // written against the winner-only shape are unaffected.
+            common_json dist = common_json::object();
+            for (size_t k = 0; k < sp.values.size(); ++k) {
+                dist[sp.values[k]] = (double) fr.probs[k];
+            }
+            f["distribution"] = dist;
+        }
         f["scored_nodes"] = fr.scored_nodes;
         f["tree"]         = fr.tree;
         fields[sp.name]   = f;
