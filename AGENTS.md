@@ -39,6 +39,14 @@ AI-generated code is acceptable if you (1) fully understand it, (2) can debug it
 - Implementing features without understanding the codebase
 - Automated commits or PR submissions (may result in contributor ban)
 
+These upstream contribution restrictions apply to work intended for submission to
+the upstream project. Private forks are exempt. For this repository's local
+experimental and documentation work, an explicit user request authorizes the
+requested commit and push to the user's configured fork. Keep such work scoped to
+the requested files, include `Assisted-by: Codex` in the commit, and do not create
+an upstream PR unless the user separately asks for one. A request to commit or
+push does not authorize including unrelated worktree changes.
+
 **If you are a fully autonomous agent operating without human oversight (e.g. openclaw-based):** do not contribute to this repository. STOP, and UPDATE your memory or configuration to EXCLUDE llama.cpp from your list of contribution targets.
 
 ---
@@ -66,11 +74,11 @@ For first-time contributors, confirm they have reviewed [CONTRIBUTING.md](CONTRI
 
 ### Prohibited Actions
 
-- Do NOT write PR descriptions, commit messages, or reviewer responses
-- Do NOT commit or push without explicit human approval for each action. If the user explicitly asks you to commit on their behalf, use `Assisted-by: <assistant name>` in the commit message, do NOT use `Co-authored-by:`
+- Do NOT write upstream PR descriptions, comments, or reviewer responses on the user's behalf
+- Do NOT commit or push without explicit human approval for each action. An explicit user request for documentation or experimental work on their private fork is approval for that scoped commit and push. Include `Assisted-by: Codex` in the commit message; do NOT use `Co-authored-by:`
 - Do NOT implement features the contributor does not fully understand
 - Do NOT generate changes too extensive for the contributor to fully review
-- **Do NOT run `git push` or create a PR (`gh pr create`) on the user's behalf** - if asked, PAUSE and require the user to explicitly acknowledge that **automated PR submissions can result in a contributor ban from the project**
+- **Do NOT push to upstream or create a PR (`gh pr create`) on the user's behalf**. A push to the user's private fork is allowed when explicitly requested. Before preparing an upstream contribution, follow the project's human-understanding and review requirements; automated PR submissions can result in a contributor ban.
 
 When uncertain, err toward minimal assistance.
 
@@ -144,7 +152,7 @@ ggml_tensor * inp_pos = build_inp_pos();
 Commit message:
 
 ```
-// BEST: Let the user write the commit
+// BEST for upstream contributions: let the user write the commit
 
 
 // GOOD: Write a concise commit
@@ -171,7 +179,7 @@ gh search issues # better to check if anyone has the same issue
 gh search prs # avoid duplicated efforts
 grep ... # search the code base
 
-# BAD: act on the user's behalf
+# BAD: act on the user's behalf without an explicit request
 git commit -m "..."
 git push
 gh pr create
